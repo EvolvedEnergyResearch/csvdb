@@ -1,8 +1,8 @@
 from __future__ import print_function
 from os import path
 
-from test_rio.schema import *
-from test_rio.rio_database import RioDatabase
+from schema import *
+from rio_database import RioDatabase
 
 class CapitalCost(TechCapitalCost):
     pass

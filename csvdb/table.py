@@ -1,6 +1,7 @@
 from __future__ import print_function
 import gzip
 import pandas as pd
+import pdb
 
 from .error import CsvdbException, RowNotFound, DuplicateRowsFound, MissingKeyValue
 from .utils import col_match
@@ -86,7 +87,7 @@ class CsvTable(object):
 
         # Raise error if the key column is missing any values
         if col:
-            if df[col].hasnans:
+            if (col not in df.columns) or df[col].hasnans:
                 raise MissingKeyValue(tbl_name, col)
 
             # ensure that keys are read as strings

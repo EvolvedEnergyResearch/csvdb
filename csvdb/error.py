@@ -16,7 +16,7 @@ class RowNotFound(CsvdbException):
 
 class MissingKeyValue(CsvdbException):
     def __init__(self, table, col):
-        msg = 'Key column {} in table {} is missing one or more values'.format(table, col)
+        msg = 'Key column {} in table {} is missing one or more values'.format(col, table)
         super(MissingKeyValue, self).__init__(msg)
 
 class DuplicateRowsFound(CsvdbException):

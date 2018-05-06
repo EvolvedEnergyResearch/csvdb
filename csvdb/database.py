@@ -89,7 +89,7 @@ class CsvDatabase(object):
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
-        self._cache_foreign_keys()
+        # self._cache_foreign_keys()
 
         # cache data for all tables for which there are generated classes
         if load:
