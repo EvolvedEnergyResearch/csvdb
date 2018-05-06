@@ -77,6 +77,7 @@ def main():
 
     ccgt_obj = DispatchableThermal('CCGT', scenario)
     ccgt_obj.show_costs()
+    print('done')
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,55 @@
-# csvdb
+# **csvdb** -- A CSV Database
 
-Tools and classes for creating a virtual relational database from a directory of CSV files.
+The csvdb package provides classes for interacting with data stored in a collection of CSV files.
 
+The are two levels of access:
+
+1. Dataframes holding the raw CSV data, and
+
+2. Instances of classes generated from the CSV data files by `csvdb/bin/genClasses.py`. The class are created with instance variables matching a declared subset of the CSV column names.
+
+Details follow.
+
+## CSV Metadata
+
+The class `CsvMetadata` (see database.py) defines several data table characteristics that are used both to generate and load the data classes. The call to instantiate a `CsvDatabase` (or subclass) passes in a list of `CsvMetadata` instances.
+
+The `CsvMetadata` constructor takes these args:
+
+```
+#!python
+
+    def __init__(self, table_name, key_col=None, attr_cols=None,
+                 df_cols=None, df_key_col=None, drop_cols=None):
+```
+* `table_name` (str) The basename of a CSV datafile, e.g., for file `MY_DATA.csv`, the table name is `MY_DATA`.
+
+* `key_col` (str) The column holding the main row identifier. Default is `"name"`.
+
+* `attr_cols` (list of str) Attribute columns become instance variables in the generated class. If `None`, `attr_cols` is set to all of the raw data columns that are not specified in `df_cols` or `drop_cols`.
+
+* `df_cols` (list of str) Identifies columns to select to create a DataFrame from rows matching `key_col`.
+Defaults to the empty list.
+
+* `df_key_col` (str) A column to combine with `key_col` to identify timeseries data to store in a `DataFrame`.
+
+* `drop_cols` (list of str) Columns to ignore, i.e., metadata that is not processed by the application.
+Defaults to the empty list.
+
+## Class hierarchy for data classes
+
+* `DataObject` (data_object.py) inherits from `object`. It provides the basic functionality
+underlying the generated data classes, such as setting instance variables from data rows, and
+generating timeseries `DataFrames`.
+
+* Optional user-defined subclass of `DataObject`. Application-wide functionality shared by all data classes can be implemented in a subclass of `DataObject`, and the location should be provided as an argument to the `csvdb/bin/genClasses.py` script. The format is a string of the form `package_name.module_name.class_name`.
+
+* Generated classes -- one per CSV file, except for CSV files listed in the `tables_without_classes` or `tables_to_ignore` arguments to the constructor for `CsvDatabase` (or subclass thereof.)
+
+* Optional user-defined subclasses of generated classes, to add app-specific behavior.
+
+## Wiki repository
+
+```
+$ git clone https://plevin@bitbucket.org/plevin/csvdb.git/wiki
+```
