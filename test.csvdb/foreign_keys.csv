@@ -1,0 +1,4 @@
+table_name,column_name,foreign_table_name,foreign_column_name
+TECH_CAPITAL_COST,name,TECH_MAIN,name
+TECH_CAPACITY_FACTOR,name,TECH_MAIN,name
+TECH_STARTUP_COST,name,TECH_MAIN,name

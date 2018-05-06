@@ -1,0 +1,6 @@
+name,source,notes,geography,gau,geography_map_key,interpolation_method,extrapolation_method,vintage,value,sensitivity
+SMALL HYDRO,https://atb.nrel.gov/,NSD 3 - Mid,state,california,,linear,nearest,2015,0.62,
+SOLAR PV,IRP Inputs,Solar PV Fixed Tilt,state,california,,linear,nearest,2015,0.28,
+WIND,IRP Inputs,TRG 6 - MID,state,california,,linear,nearest,2015,0.3,
+GEOTHERMAL,https://atb.nrel.gov/,Hydro / Flash - Mid,state,california,,linear,nearest,2015,0.9,
+DISTRIBUTED SOLAR PV ,IRP Inputs,Solar Parking Lot,state,california,,linear,nearest,2050,0.23,
