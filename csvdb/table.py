@@ -79,8 +79,8 @@ class CsvTable(object):
         with openFunc(filename, 'rb') as f:
             self.data = df = pd.read_csv(f, index_col=None)
 
-        # # Change problematic column names like 'Unnamed: 15', and 'something.1'
-        # df.columns = map(clean_col_name, df.columns)
+        # drop leading or trailing blanks from column names
+        df.columns = map(str.strip, df.columns)
 
         self._compute_metadata()
 

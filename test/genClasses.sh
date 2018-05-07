@@ -1,8 +1,5 @@
 #!/bin/sh
 #
-# This is how genClasses.py was run to generate the schema.py for the test code
+# Run genClasses to create schema.py for the test database
 #
-RIO_DIR=$HOME/repos/RIO
-export PYTHONPATH=$PYTHONPATH:$RIO_DIR:$RIO_DIR/csvdb
-
-../bin/genClasses.py --dbdir=../test.csvdb --data-superclass=test.tst_database.DataObject --database-class=test.tst_database.TestDatabase -o schema.py
+genClasses --dbdir=../test.csvdb --data-superclass=csvdb.data_object.DataObject --database-class=test.tst_database.TestDatabase -o schema.py

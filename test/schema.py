@@ -2,13 +2,7 @@
 # This is a generated file. Manual edits may be lost!
 #
 import sys
-import os
-
-# if os.environ['USER'] == 'rjp':
-#     from csvdb.data_object import DataObject
-# else:
-
-from RIO.csvdb.csvdb.data_object import DataObject
+from csvdb.data_object import DataObject # superclass of generated classes
 
 _Module = sys.modules[__name__]  # get ref to our own module object
 
@@ -320,7 +314,7 @@ class ConversionFixedOmAnn(DataObject):
     _table_name = "CONVERSION_FIXED_OM_ANN"
     _key_col = "name"
     _cols = ["currency", "currency_year", "extrapolation_method", "gau", "geography",
-             "geography_map_key", "interpolation_method", "name", "notes", "source_", "time_unit",
+             "geography_map_key", "interpolation_method", "name", "notes", "source", "time_unit",
              "unit", "value", "vintage"]
     _df_cols = []
     _df_key_col = "None"
@@ -340,14 +334,14 @@ class ConversionFixedOmAnn(DataObject):
         self.interpolation_method = None
         self.name = None
         self.notes = None
-        self.source_ = None
+        self.source = None
         self.time_unit = None
         self.unit = None
         self.value = None
         self.vintage = None
 
     def set_args(self, scenario, currency=None, currency_year=None, extrapolation_method=None, gau=None, geography=None,
-                 geography_map_key=None, interpolation_method=None, name=None, notes=None, source_=None,
+                 geography_map_key=None, interpolation_method=None, name=None, notes=None, source=None,
                  time_unit=None, unit=None, value=None, vintage=None):
         self.check_scenario(scenario)
 
@@ -360,19 +354,19 @@ class ConversionFixedOmAnn(DataObject):
         self.interpolation_method = interpolation_method
         self.name = name
         self.notes = notes
-        self.source_ = source_
+        self.source = source
         self.time_unit = time_unit
         self.unit = unit
         self.value = value
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, source_, notes, currency, currency_year, unit, time_unit, geography, gau,
+        (name, source, notes, currency, currency_year, unit, time_unit, geography, gau,
          geography_map_key, interpolation_method, extrapolation_method, vintage, value) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
-                  interpolation_method=interpolation_method, name=name, notes=notes, source_=source_,
+                  interpolation_method=interpolation_method, name=name, notes=notes, source=source,
                   time_unit=time_unit, unit=unit, value=value, vintage=vintage)
 
 class ConversionMain(DataObject):
@@ -446,7 +440,7 @@ class ConversionVariableOm(DataObject):
     _table_name = "CONVERSION_VARIABLE_OM"
     _key_col = "name"
     _cols = ["currency", "currency_year", "extrapolation_method", "gau", "geography",
-             "geography_map_key", "interpolation_method", "name", "notes", "source_", "unit", "value",
+             "geography_map_key", "interpolation_method", "name", "notes", "source", "unit", "value",
              "vintage"]
     _df_cols = []
     _df_key_col = "None"
@@ -466,13 +460,13 @@ class ConversionVariableOm(DataObject):
         self.interpolation_method = None
         self.name = None
         self.notes = None
-        self.source_ = None
+        self.source = None
         self.unit = None
         self.value = None
         self.vintage = None
 
     def set_args(self, scenario, currency=None, currency_year=None, extrapolation_method=None, gau=None, geography=None,
-                 geography_map_key=None, interpolation_method=None, name=None, notes=None, source_=None,
+                 geography_map_key=None, interpolation_method=None, name=None, notes=None, source=None,
                  unit=None, value=None, vintage=None):
         self.check_scenario(scenario)
 
@@ -485,28 +479,27 @@ class ConversionVariableOm(DataObject):
         self.interpolation_method = interpolation_method
         self.name = name
         self.notes = notes
-        self.source_ = source_
+        self.source = source
         self.unit = unit
         self.value = value
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, source_, notes, currency, currency_year, unit, geography, gau, geography_map_key,
+        (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
          interpolation_method, extrapolation_method, vintage, value) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
-                  interpolation_method=interpolation_method, name=name, notes=notes, source_=source_,
+                  interpolation_method=interpolation_method, name=name, notes=notes, source=source,
                   unit=unit, value=value, vintage=vintage)
 
 class ExistingMain(DataObject):
     _instances_by_key = {}
     _table_name = "EXISTING_MAIN"
     _key_col = "name"
-    _cols = ["Unnamed_15", "capacity", "gau", "generation_p_max", "generation_p_min", "generator",
-             "geography", "load_p_max", "load_p_min", "minimum_load", "name", "operating_year",
-             "ramp_rate", "ramp_rate_1", "ramp_rate_time_unit", "retirement_year", "shape",
-             "technology_type", "unit"]
+    _cols = ["capacity", "gau", "generation_p_max", "generation_p_min", "generator", "geography",
+             "load_p_max", "load_p_min", "name", "operating_year", "ramp_rate", "ramp_rate_time_unit",
+             "retirement_year", "shape", "technology_type", "unit"]
     _df_cols = []
     _df_key_col = "None"
     _data_table_name = None
@@ -516,7 +509,6 @@ class ExistingMain(DataObject):
 
         ExistingMain._instances_by_key[self._key] = self
 
-        self.Unnamed_15 = None
         self.capacity = None
         self.gau = None
         self.generation_p_max = None
@@ -525,25 +517,21 @@ class ExistingMain(DataObject):
         self.geography = None
         self.load_p_max = None
         self.load_p_min = None
-        self.minimum_load = None
         self.name = None
         self.operating_year = None
         self.ramp_rate = None
-        self.ramp_rate_1 = None
         self.ramp_rate_time_unit = None
         self.retirement_year = None
         self.shape = None
         self.technology_type = None
         self.unit = None
 
-    def set_args(self, scenario, Unnamed_15=None, capacity=None, gau=None, generation_p_max=None, generation_p_min=None,
-                 generator=None, geography=None, load_p_max=None, load_p_min=None, minimum_load=None,
-                 name=None, operating_year=None, ramp_rate=None, ramp_rate_1=None,
-                 ramp_rate_time_unit=None, retirement_year=None, shape=None, technology_type=None,
-                 unit=None):
+    def set_args(self, scenario, capacity=None, gau=None, generation_p_max=None, generation_p_min=None, generator=None,
+                 geography=None, load_p_max=None, load_p_min=None, name=None, operating_year=None,
+                 ramp_rate=None, ramp_rate_time_unit=None, retirement_year=None, shape=None,
+                 technology_type=None, unit=None):
         self.check_scenario(scenario)
 
-        self.Unnamed_15 = Unnamed_15
         self.capacity = capacity
         self.gau = gau
         self.generation_p_max = generation_p_max
@@ -552,11 +540,9 @@ class ExistingMain(DataObject):
         self.geography = geography
         self.load_p_max = load_p_max
         self.load_p_min = load_p_min
-        self.minimum_load = minimum_load
         self.name = name
         self.operating_year = operating_year
         self.ramp_rate = ramp_rate
-        self.ramp_rate_1 = ramp_rate_1
         self.ramp_rate_time_unit = ramp_rate_time_unit
         self.retirement_year = retirement_year
         self.shape = shape
@@ -564,42 +550,15 @@ class ExistingMain(DataObject):
         self.unit = unit
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, technology_type, generator, shape, geography, gau, unit, ramp_rate, ramp_rate_1,
+        (name, technology_type, generator, shape, geography, gau, unit, ramp_rate,
          ramp_rate_time_unit, generation_p_min, generation_p_max, load_p_min, load_p_max,
-         minimum_load, Unnamed_15, capacity, operating_year, retirement_year) = tup
+         capacity, operating_year, retirement_year) = tup
 
-        self.set_args(scenario, Unnamed_15=Unnamed_15, capacity=capacity, gau=gau, generation_p_max=generation_p_max,
+        self.set_args(scenario, capacity=capacity, gau=gau, generation_p_max=generation_p_max,
                   generation_p_min=generation_p_min, generator=generator, geography=geography,
-                  load_p_max=load_p_max, load_p_min=load_p_min, minimum_load=minimum_load, name=name,
-                  operating_year=operating_year, ramp_rate=ramp_rate, ramp_rate_1=ramp_rate_1,
-                  ramp_rate_time_unit=ramp_rate_time_unit, retirement_year=retirement_year, shape=shape,
-                  technology_type=technology_type, unit=unit)
-
-class GeographyMapKeys(DataObject):
-    _instances_by_key = {}
-    _table_name = "GeographyMapKeys"
-    _key_col = "name"
-    _cols = ["name"]
-    _df_cols = []
-    _df_key_col = "None"
-    _data_table_name = None
-
-    def __init__(self, name, scenario):
-        DataObject.__init__(self, name, scenario)
-
-        GeographyMapKeys._instances_by_key[self._key] = self
-
-        self.name = None
-
-    def set_args(self, scenario, name=None):
-        self.check_scenario(scenario)
-
-        self.name = name
-
-    def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name) = tup
-
-        self.set_args(scenario, name=name)
+                  load_p_max=load_p_max, load_p_min=load_p_min, name=name, operating_year=operating_year,
+                  ramp_rate=ramp_rate, ramp_rate_time_unit=ramp_rate_time_unit,
+                  retirement_year=retirement_year, shape=shape, technology_type=technology_type, unit=unit)
 
 class ProductCost(DataObject):
     _instances_by_key = {}
@@ -1009,13 +968,13 @@ class TechEfficiency(DataObject):
                   min_load_value=min_load_value, name=name, unit_in=unit_in, unit_out=unit_out,
                   vintage=vintage)
 
-class TechFixedOmAnn(DataObject):
+class TechFixedOm(DataObject):
     _instances_by_key = {}
-    _table_name = "TECH_FIXED_OM_ANN"
+    _table_name = "TECH_FIXED_OM"
     _key_col = "name"
     _cols = ["currency", "currency_year", "extrapolation_method", "gau", "geography",
-             "geography_map_key", "interpolation_method", "name", "notes", "sensitivity", "source_",
-             "unit", "value", "vintage"]
+             "geography_map_key", "interpolation_method", "name", "notes", "source", "unit", "value",
+             "vintage"]
     _df_cols = []
     _df_key_col = "None"
     _data_table_name = None
@@ -1023,7 +982,7 @@ class TechFixedOmAnn(DataObject):
     def __init__(self, name, scenario):
         DataObject.__init__(self, name, scenario)
 
-        TechFixedOmAnn._instances_by_key[self._key] = self
+        TechFixedOm._instances_by_key[self._key] = self
 
         self.currency = None
         self.currency_year = None
@@ -1034,15 +993,14 @@ class TechFixedOmAnn(DataObject):
         self.interpolation_method = None
         self.name = None
         self.notes = None
-        self.sensitivity = None
-        self.source_ = None
+        self.source = None
         self.unit = None
         self.value = None
         self.vintage = None
 
     def set_args(self, scenario, currency=None, currency_year=None, extrapolation_method=None, gau=None, geography=None,
-                 geography_map_key=None, interpolation_method=None, name=None, notes=None,
-                 sensitivity=None, source_=None, unit=None, value=None, vintage=None):
+                 geography_map_key=None, interpolation_method=None, name=None, notes=None, source=None,
+                 unit=None, value=None, vintage=None):
         self.check_scenario(scenario)
 
         self.currency = currency
@@ -1054,20 +1012,19 @@ class TechFixedOmAnn(DataObject):
         self.interpolation_method = interpolation_method
         self.name = name
         self.notes = notes
-        self.sensitivity = sensitivity
-        self.source_ = source_
+        self.source = source
         self.unit = unit
         self.value = value
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, source_, notes, currency, currency_year, unit, geography, gau, geography_map_key,
-         interpolation_method, extrapolation_method, vintage, value, sensitivity) = tup
+        (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
+         interpolation_method, extrapolation_method, vintage, value) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
-                  interpolation_method=interpolation_method, name=name, notes=notes,
-                  sensitivity=sensitivity, source_=source_, unit=unit, value=value, vintage=vintage)
+                  interpolation_method=interpolation_method, name=name, notes=notes, source=source,
+                  unit=unit, value=value, vintage=vintage)
 
 class TechItc(DataObject):
     _instances_by_key = {}
@@ -1420,6 +1377,101 @@ class TechRps(DataObject):
         self.set_args(scenario, RPS=RPS, load_modifier=load_modifier, name=name, sensitivity=sensitivity, vintage=vintage,
                   year=year)
 
+class TechSchedule(DataObject):
+    _instances_by_key = {}
+    _table_name = "TECH_SCHEDULE"
+    _key_col = "name"
+    _cols = ["extrapolation_method", "gau", "geography", "geography_map_key", "interpolation_method",
+             "name", "sensitivity", "time_unit", "type", "unit", "value", "year"]
+    _df_cols = []
+    _df_key_col = "None"
+    _data_table_name = None
+
+    def __init__(self, name, scenario):
+        DataObject.__init__(self, name, scenario)
+
+        TechSchedule._instances_by_key[self._key] = self
+
+        self.extrapolation_method = None
+        self.gau = None
+        self.geography = None
+        self.geography_map_key = None
+        self.interpolation_method = None
+        self.name = None
+        self.sensitivity = None
+        self.time_unit = None
+        self.type = None
+        self.unit = None
+        self.value = None
+        self.year = None
+
+    def set_args(self, scenario, extrapolation_method=None, gau=None, geography=None, geography_map_key=None,
+                 interpolation_method=None, name=None, sensitivity=None, time_unit=None, type=None,
+                 unit=None, value=None, year=None):
+        self.check_scenario(scenario)
+
+        self.extrapolation_method = extrapolation_method
+        self.gau = gau
+        self.geography = geography
+        self.geography_map_key = geography_map_key
+        self.interpolation_method = interpolation_method
+        self.name = name
+        self.sensitivity = sensitivity
+        self.time_unit = time_unit
+        self.type = type
+        self.unit = unit
+        self.value = value
+        self.year = year
+
+    def init_from_tuple(self, tup, scenario, **kwargs):    
+        (name, type, unit, time_unit, geography, gau, geography_map_key, interpolation_method,
+         extrapolation_method, year, value, sensitivity) = tup
+
+        self.set_args(scenario, extrapolation_method=extrapolation_method, gau=gau, geography=geography,
+                  geography_map_key=geography_map_key, interpolation_method=interpolation_method,
+                  name=name, sensitivity=sensitivity, time_unit=time_unit, type=type, unit=unit,
+                  value=value, year=year)
+
+class TechShutdownCost(DataObject):
+    _instances_by_key = {}
+    _table_name = "TECH_SHUTDOWN_COST"
+    _key_col = "name"
+    _cols = ["currency", "currency_year", "name", "notes", "source", "unit", "value"]
+    _df_cols = []
+    _df_key_col = "None"
+    _data_table_name = None
+
+    def __init__(self, name, scenario):
+        DataObject.__init__(self, name, scenario)
+
+        TechShutdownCost._instances_by_key[self._key] = self
+
+        self.currency = None
+        self.currency_year = None
+        self.name = None
+        self.notes = None
+        self.source = None
+        self.unit = None
+        self.value = None
+
+    def set_args(self, scenario, currency=None, currency_year=None, name=None, notes=None, source=None, unit=None,
+                 value=None):
+        self.check_scenario(scenario)
+
+        self.currency = currency
+        self.currency_year = currency_year
+        self.name = name
+        self.notes = notes
+        self.source = source
+        self.unit = unit
+        self.value = value
+
+    def init_from_tuple(self, tup, scenario, **kwargs):    
+        (name, source, notes, currency, currency_year, unit, value) = tup
+
+        self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, notes=notes, source=source,
+                  unit=unit, value=value)
+
 class TechStartupCost(DataObject):
     _instances_by_key = {}
     _table_name = "TECH_STARTUP_COST"
@@ -1461,7 +1513,9 @@ class TechVariableOm(DataObject):
     _instances_by_key = {}
     _table_name = "TECH_VARIABLE_OM"
     _key_col = "name"
-    _cols = ["currency", "currency_year", "name", "sensitivity", "unit", "value", "vintage"]
+    _cols = ["currency", "currency_year", "extrapolation_method", "gau", "geography",
+             "geography_map_key", "interpolation_method", "name", "notes", "sensitivity", "source",
+             "unit", "value", "vintage"]
     _df_cols = []
     _df_key_col = "None"
     _data_table_name = None
@@ -1473,27 +1527,45 @@ class TechVariableOm(DataObject):
 
         self.currency = None
         self.currency_year = None
+        self.extrapolation_method = None
+        self.gau = None
+        self.geography = None
+        self.geography_map_key = None
+        self.interpolation_method = None
         self.name = None
+        self.notes = None
         self.sensitivity = None
+        self.source = None
         self.unit = None
         self.value = None
         self.vintage = None
 
-    def set_args(self, scenario, currency=None, currency_year=None, name=None, sensitivity=None, unit=None, value=None,
-                 vintage=None):
+    def set_args(self, scenario, currency=None, currency_year=None, extrapolation_method=None, gau=None, geography=None,
+                 geography_map_key=None, interpolation_method=None, name=None, notes=None,
+                 sensitivity=None, source=None, unit=None, value=None, vintage=None):
         self.check_scenario(scenario)
 
         self.currency = currency
         self.currency_year = currency_year
+        self.extrapolation_method = extrapolation_method
+        self.gau = gau
+        self.geography = geography
+        self.geography_map_key = geography_map_key
+        self.interpolation_method = interpolation_method
         self.name = name
+        self.notes = notes
         self.sensitivity = sensitivity
+        self.source = source
         self.unit = unit
         self.value = value
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, vintage, value, sensitivity) = tup
+        (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
+         interpolation_method, extrapolation_method, vintage, value, sensitivity) = tup
 
-        self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, sensitivity=sensitivity,
-                  unit=unit, value=value, vintage=vintage)
+        self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
+                  gau=gau, geography=geography, geography_map_key=geography_map_key,
+                  interpolation_method=interpolation_method, name=name, notes=notes,
+                  sensitivity=sensitivity, source=source, unit=unit, value=value, vintage=vintage)
 

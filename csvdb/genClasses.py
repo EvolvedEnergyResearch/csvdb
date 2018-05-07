@@ -5,7 +5,7 @@ import click
 import inspect
 import sys
 
-from RIO.csvdb.csvdb import CsvDatabase, CsvdbException, importFromDotSpec, camelCase, DataObject
+from csvdb import CsvDatabase, CsvdbException, importFromDotSpec, camelCase, DataObject
 
 def observeLinewidth(args, linewidth, indent=16):
     processed = ''
