@@ -1,4 +1,4 @@
-name,potential_group,type,zone,construction_time,lifetime,book_life,DSCR,MACRS_term,ownership_model,ramp_rate,ramp_rate_time_unit,typical unit size,generation_p_min,generation_p_max,load_p_min,load_p_max,bleed_rate,max_duration,bleed_rate_time_unit,ancillary_service_eligible,curtailable,shape
+name,potential_group,type,zone,construction_time,lifetime,book_life,DSCR,MACRS_term,ownership_model,ramp_rate,ramp_rate_time_unit,typical_unit_size,generation_p_min,generation_p_max,load_p_min,load_p_max,bleed_rate,max_duration,bleed_rate_time_unit,ancillary_service_eligible,curtailable,shape
 LI-ION,,ELECTRIC STORAGE,0,1,10,10,0.1,5,IPP,1,second,,0,1,0,1,,,,1,,
 GAS ICE,,DISPATCHABLE THERMAL,0,3,20,20,0.1,15,IPP,1,minute,110,0.090909091,1,,,,,,1,,
 CT - AERO,,DISPATCHABLE THERMAL,0,3,20,20,0.1,15,IPP,0.45,minute,111,0.25,1,,,,,,1,,

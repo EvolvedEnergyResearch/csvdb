@@ -1,4 +1,4 @@
-name,source ,notes,currency,currency_year,unit,geography,gau,geography_ map_key,interpolation_method,extrapolation_method,vintage,value
+name,source ,notes,currency,currency_year,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,vintage,value
 GAS ICE,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,8.7
 New CT - AERO,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,12.2
 New CT - FRAME,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,6.4

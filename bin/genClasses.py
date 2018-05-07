@@ -30,21 +30,6 @@ _Module = sys.modules[__name__]  # get ref to our own module object
 
 '''
 
-# Unused = '''
-# # Find a generated class by table name.
-# # Deprecated?
-# def class_for_table(tbl_name):
-#     from csvdb import UnknownDataClass, camelCase
-#
-#     class_name = camelCase(tbl_name)
-#
-#     try:
-#         return getattr(_Module, class_name)
-#     except AttributeError:
-#         raise UnknownDataClass(class_name)
-#
-# '''
-
 class ClassGenerator(object):
     def __init__(self, dbdir, dbclass, superclass, outfile, linewidth):
         self.db = db = dbclass.get_database(dbdir, load=False)

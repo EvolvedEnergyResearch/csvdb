@@ -14,6 +14,11 @@ class RowNotFound(CsvdbException):
         msg = "Row not found for key {} in table '{}'".format(key, table)
         super(RowNotFound, self).__init__(msg)
 
+class MissingKeyColumn(CsvdbException):
+    def __init__(self, table, col):
+        msg = 'Key column {} is not present in table {}'.format(col, table)
+        super(MissingKeyColumn, self).__init__(msg)
+
 class MissingKeyValue(CsvdbException):
     def __init__(self, table, col):
         msg = 'Key column {} in table {} is missing one or more values'.format(col, table)

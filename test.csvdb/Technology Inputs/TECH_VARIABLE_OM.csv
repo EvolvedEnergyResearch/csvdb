@@ -1,5 +1,5 @@
-name,currency,currency_year,unit,vintage,value,sensitivity
-GAS ICE,USD,2016,megawatt hour,2018,7.8,
-New CT - AERO,USD,2016,megawatt hour,2018,10.2,
-New CT - FRAME,USD,2016,megawatt hour,2018,23,
-New CCGT,USD,2016,megawatt hour,2018,2.4,
+name,source ,notes,currency,currency_year,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,vintage,value,sensitivity
+GAS ICE,,,USD,2016,megawatt hour,global,all,,linear,nearest,2018,7.8,
+New CT - AERO,,,USD,2016,megawatt hour,global,all,,linear,nearest,2018,10.2,
+New CT - FRAME,,,USD,2016,megawatt hour,global,all,,linear,nearest,2018,23,
+New CCGT,,,USD,2016,megawatt hour,global,all,,linear,nearest,2018,2.4,

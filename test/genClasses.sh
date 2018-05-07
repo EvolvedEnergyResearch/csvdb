@@ -5,4 +5,4 @@
 RIO_DIR=$HOME/repos/RIO
 export PYTHONPATH=$PYTHONPATH:$RIO_DIR:$RIO_DIR/csvdb
 
-../bin/genClasses.py -d ../test.csvdb -c test_rio.tst_database.DataObject -D test_rio.tst_database.TestDatabase -o schema.py
+../bin/genClasses.py --dbdir=../test.csvdb --data-superclass=test.tst_database.DataObject --database-class=test.tst_database.TestDatabase -o schema.py

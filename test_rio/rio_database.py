@@ -1,7 +1,3 @@
-#
-# Example of a subclass of CsvDatabase that adds metadata.
-#
-
 import pdb
 import logging
 import numpy as np

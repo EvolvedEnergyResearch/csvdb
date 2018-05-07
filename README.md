@@ -19,10 +19,13 @@ The `CsvMetadata` constructor takes these args:
 ```
 #!python
 
-    def __init__(self, table_name, key_col=None, attr_cols=None,
+    def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
                  df_cols=None, df_key_col=None, drop_cols=None):
 ```
 * `table_name` (str) The basename of a CSV datafile, e.g., for file `MY_DATA.csv`, the table name is `MY_DATA`.
+
+* `data_table` (bool) If True, no class is generated for this table; the only processing is to load the CSV data
+  into the `data` instance variable in a `CsvTable` when `db.get_table(tbl_name)` is called. All other metadata attributes are ignored.
 
 * `key_col` (str) The column holding the main row identifier. Default is `"name"`.
 
@@ -51,9 +54,3 @@ generating timeseries `DataFrames`.
 ## Generating classes -- schema.py
 
 The script `csvdb/bin/genClasses.py` creates table-specific subclasses `DataObject` based on a "CSV database", i.e., a directory with multiple CSV files that contain the data. Re-run this script after adding CSV files to the database directory or after modifying any `CsvMetadata`.
-
-## Wiki repository
-
-```
-$ git clone https://plevin@bitbucket.org/plevin/csvdb.git/wiki
-```

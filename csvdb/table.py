@@ -2,8 +2,9 @@ from __future__ import print_function
 import gzip
 import pandas as pd
 import pdb
+import re
 
-from .error import CsvdbException, RowNotFound, DuplicateRowsFound, MissingKeyValue
+from .error import *
 from .utils import col_match
 
 # This string is inserted into sensitivity columns when value == None,
@@ -11,6 +12,14 @@ from .utils import col_match
 REF_SCENARIO = '_reference_'
 
 SENSITIVITY_COL = 'sensitivity'
+
+
+_bad_chars = re.compile('[\.:\ ]+')
+
+def clean_col_name(name):
+    'Replace problematic chars in column names with underscores'
+    return re.sub(_bad_chars, '_', name)
+
 
 class CsvTable(object):
     def __init__(self, db, tbl_name, metadata):
@@ -21,10 +30,12 @@ class CsvTable(object):
 
         self.data_class = None
         self.load_all()
-        self.compute_metadata()
 
-    def compute_metadata(self):
+    def _compute_metadata(self):
         md = self.metadata
+        if md.data_table:
+            return
+
         tbl_name = self.name
         all_cols = self.get_columns()
 
@@ -33,7 +44,6 @@ class CsvTable(object):
         df_cols    = md.df_cols
         drop_cols  = md.drop_cols
 
-        # avoiding using sets to maintain column ordering
         df_key_cols = [df_key_col] if df_key_col else []
         if not md.attr_cols:
             non_attr_cols = df_cols + df_key_cols + drop_cols
@@ -54,20 +64,6 @@ class CsvTable(object):
     def __str__(self):
         return "<{} {}>".format(self.__class__.__name__, self.name)
 
-    # Deprecated?
-    # def load_data_object(self, cls, scenario):
-    #     self.data_class = cls
-    #     self.load_all()
-    #     df = self.data
-    #
-    #     print("Loaded {} rows for {}".format(df.shape[0], self.name))
-    #
-    #     key_col = cls._key_col
-    #     for _, row in df.iterrows():
-    #         key = row[key_col]
-    #         obj = cls(key, scenario)  # adds itself to the classes _instances_by_id dict
-    #         obj.init_from_series(row, scenario)
-
     def load_all(self):
         if self.data is not None:
             return self.data
@@ -81,33 +77,39 @@ class CsvTable(object):
 
         openFunc = gzip.open if filename.endswith('.gz') else open
         with openFunc(filename, 'rb') as f:
-            df = pd.read_csv(f, index_col=None)
+            self.data = df = pd.read_csv(f, index_col=None)
 
-        col = db.get_key_col(tbl_name)
+        # # Change problematic column names like 'Unnamed: 15', and 'something.1'
+        # df.columns = map(clean_col_name, df.columns)
+
+        self._compute_metadata()
+
+        col = self.metadata.key_col
 
         # Raise error if the key column is missing any values
+
         if col and len(df):
-            try:
-                if (col not in df.columns) or df[col].hasnans:
-                    raise MissingKeyValue(tbl_name, col)
-            except:
-                pdb.set_trace()
+            if (col not in df.columns):
+                raise MissingKeyColumn(tbl_name, col)
+
+            if df[col].hasnans:
+                raise MissingKeyValue(tbl_name, col)
 
             # ensure that keys are read as strings
             df[col] = df[col].astype(str)
 
+        # TODO: Document this
         # Convert empty (NaN) sensitivities to value of REF_SCENARIO
         if self.has_sensitivity_col(df):
             s = df[SENSITIVITY_COL]
             s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
 
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
-        df = df.where(pd.notnull(df), other=None)
+        self.data = df = df.where(pd.notnull(df), other=None)
 
         rows, cols = df.shape
         print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
 
-        self.data = df
 
     def has_sensitivity_col(self, df=None):
         df = self.data if df is None else df
