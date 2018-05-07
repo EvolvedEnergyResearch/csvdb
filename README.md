@@ -6,7 +6,7 @@ The are two levels of access:
 
 1. Dataframes holding the raw CSV data, and
 
-2. Instances of classes generated from the CSV data files by `csvdb/bin/genClasses.py`. The class are created with instance variables matching a declared subset of the CSV column names.
+2. Instances of classes generated from the CSV data files by `csvdb/bin/genClasses.py`. The classes are created with instance variables matching a declared subset of the CSV column names.
 
 Details follow.
 
@@ -47,6 +47,10 @@ generating timeseries `DataFrames`.
 * Generated classes -- one per CSV file, except for CSV files listed in the `tables_without_classes` or `tables_to_ignore` arguments to the constructor for `CsvDatabase` (or subclass thereof.)
 
 * Optional user-defined subclasses of generated classes, to add app-specific behavior.
+
+## Generating classes -- schema.py
+
+The script `csvdb/bin/genClasses.py` creates table-specific subclasses `DataObject` based on a "CSV database", i.e., a directory with multiple CSV files that contain the data. Re-run this script after adding CSV files to the database directory or after modifying any `CsvMetadata`.
 
 ## Wiki repository
 
