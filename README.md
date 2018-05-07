@@ -54,9 +54,3 @@ generating timeseries `DataFrames`.
 ## Generating classes -- schema.py
 
 The script `csvdb/bin/genClasses.py` creates table-specific subclasses `DataObject` based on a "CSV database", i.e., a directory with multiple CSV files that contain the data. Re-run this script after adding CSV files to the database directory or after modifying any `CsvMetadata`.
-
-## Wiki repository
-
-```
-$ git clone https://plevin@bitbucket.org/plevin/csvdb.git/wiki
-```
