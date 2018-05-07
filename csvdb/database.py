@@ -21,16 +21,15 @@ import os
 import pandas as pd
 
 from .error import CsvdbException
-from .foreign_key import ForeignKey
 from .table import CsvTable
 
 pd.set_option('display.width', 200)
 
 
 class CsvMetadata(object):
-    __slots__ = ['table_name', 'key_col', 'attr_cols', 'df_cols', 'df_key_col', 'drop_cols']
+    __slots__ = ['table_name', 'data_table', 'key_col', 'attr_cols', 'df_cols', 'df_key_col', 'drop_cols']
 
-    def __init__(self, table_name, key_col=None, attr_cols=None,
+    def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
                  df_cols=None, df_key_col=None, drop_cols=None):
         """
         A simple struct to house table metadata. Attribute columns (`attr_cols`)
@@ -41,11 +40,18 @@ class CsvMetadata(object):
         `df_cols` or `drop_cols`; df_cols = []; `drop_cols` = [].
         """
         self.table_name = table_name
-        self.key_col    = key_col or 'name'
-        self.df_key_col = df_key_col
-        self.df_cols    = df_cols or []
-        self.drop_cols  = drop_cols or []
-        self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
+        self.data_table = data_table
+
+        if data_table:
+            # ignore all other parameters, if any, to constructor
+            self.key_col = self.df_key_col = None
+            self.df_cols = self.attr_cols = self.drop_cols = []
+        else:
+            self.key_col    = key_col or 'name'
+            self.df_key_col = df_key_col
+            self.df_cols    = df_cols or []
+            self.drop_cols  = drop_cols or []
+            self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
 
 class CsvDatabase(object):
     """
@@ -57,7 +63,7 @@ class CsvDatabase(object):
     def __init__(self, pathname=None, load=True, metadata=None,
                  # Deprecated: given explicit metadata, can probably drop these arguments
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
-                 data_tables=None, tables_to_load_on_demand=None):
+                 tables_to_load_on_demand=None):
         """
         Initialize a CsvDatabase.
 
@@ -80,16 +86,13 @@ class CsvDatabase(object):
         self.table_names = {}        # all known table names
         self.text_maps   = {}        # dict by table name of dicts by id of text mapping tables
 
-        self.tables_without_classes = (tables_without_classes or []) + ['foreign_keys']
+        self.tables_without_classes = tables_without_classes or []
         self.tables_to_ignore = tables_to_ignore or []
-
-        self.data_tables = data_tables or []
         self.tables_to_load_on_demand = tables_to_load_on_demand or []
 
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
-        # self._cache_foreign_keys()
 
         # cache data for all tables for which there are generated classes
         if load:
@@ -144,13 +147,15 @@ class CsvDatabase(object):
             self.table_objs[name] = tbl
             return tbl
 
-    # Deprecated?
     def tables_with_classes(self, include_on_demand=False):
         exclude = self.tables_without_classes
 
+
         # Don't create classes for excluded tables; these are rendered as DataFrames only
         tables = [name for name in self.get_table_names() if name not in exclude]
-        ignore = self.tables_to_ignore + (self.tables_to_load_on_demand if not include_on_demand else [])
+        data_tables = [name for name, md in self.metadata.items() if md.data_table]
+
+        ignore = data_tables + self.tables_to_ignore + (self.tables_to_load_on_demand if not include_on_demand else [])
         result = sorted(list(set(tables) - set(ignore)))
         return result
 
@@ -194,15 +199,15 @@ class CsvDatabase(object):
         md = self.table_metadata(table_name)
         return md.key_col
 
-    def _cache_foreign_keys(self):
-        """
-        The CSV database reads the foreign key data that was exported from postgres.
-        """
-        pathname = self.file_for_table('foreign_keys')
-        df = pd.read_csv(pathname, index_col=None)
-        for _, row in df.iterrows():
-            tbl_name, col_name, for_tbl_name, for_col_name = tuple(row)
-            ForeignKey(tbl_name, col_name, for_tbl_name, for_col_name)
+    # def _cache_foreign_keys(self):
+    #     """
+    #     The CSV database reads the foreign key data that was exported from postgres.
+    #     """
+    #     pathname = self.file_for_table('foreign_keys')
+    #     df = pd.read_csv(pathname, index_col=None)
+    #     for _, row in df.iterrows():
+    #         tbl_name, col_name, for_tbl_name, for_col_name = tuple(row)
+    #         ForeignKey(tbl_name, col_name, for_tbl_name, for_col_name)
 
     def create_file_map(self):
         pathname = self.pathname

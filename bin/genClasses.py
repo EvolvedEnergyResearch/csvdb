@@ -5,7 +5,17 @@ import click
 import inspect
 import sys
 
-from csvdb import CsvDatabase, CsvdbException, importFromDotSpec, camelCase, DataObject
+#
+# Short-term hack to handle environment differences...
+# TODO: FIX THIS!
+#
+import os
+if os.environ['USER'] == 'rjp':
+    from csvdb import *
+else:
+    # TODO: Ryan should add whatever is needed here
+    from RIO.csvdb.csvdb import *
+
 
 def observeLinewidth(args, linewidth, indent=16):
     processed = ''
@@ -29,21 +39,6 @@ from {superclassModule} import {superclassName} # superclass of generated classe
 _Module = sys.modules[__name__]  # get ref to our own module object
 
 '''
-
-# Unused = '''
-# # Find a generated class by table name.
-# # Deprecated?
-# def class_for_table(tbl_name):
-#     from csvdb import UnknownDataClass, camelCase
-#
-#     class_name = camelCase(tbl_name)
-#
-#     try:
-#         return getattr(_Module, class_name)
-#     except AttributeError:
-#         raise UnknownDataClass(class_name)
-#
-# '''
 
 class ClassGenerator(object):
     def __init__(self, dbdir, dbclass, superclass, outfile, linewidth):

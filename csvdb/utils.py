@@ -7,7 +7,10 @@ def col_match(col, value):
     return '{} == "{}"'.format(col, value)
 
 def camelCase(s):
-    return s.title().replace('_', '')
+    """
+    If a string has any underscores (e.g., 'Camel_case', change it to 'CamelCase'.
+    """
+    return s.title().replace('_', '') if '_' in s else s
 
 def importFrom(modname, objname, asTuple=False):
     """
