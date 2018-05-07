@@ -86,9 +86,12 @@ class CsvTable(object):
         col = db.get_key_col(tbl_name)
 
         # Raise error if the key column is missing any values
-        if col:
-            if (col not in df.columns) or df[col].hasnans:
-                raise MissingKeyValue(tbl_name, col)
+        if col and len(df):
+            try:
+                if (col not in df.columns) or df[col].hasnans:
+                    raise MissingKeyValue(tbl_name, col)
+            except:
+                pdb.set_trace()
 
             # ensure that keys are read as strings
             df[col] = df[col].astype(str)

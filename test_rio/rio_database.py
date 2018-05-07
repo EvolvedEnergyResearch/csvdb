@@ -13,8 +13,7 @@ from RIO.time_series import TimeSeries
 import RIO.util as util
 
 _RioMetadata = [
-    CsvMetadata('GeographiesSpatialJoin',
-                data_table=True),
+    CsvMetadata('GeographiesSpatialJoin'),
 
     CsvMetadata('TECH_MAIN'),  # all defaults apply
 
@@ -25,8 +24,11 @@ _RioMetadata = [
                 drop_cols=['source', 'notes']),
 
     CsvMetadata('TECH_CAPACITY_FACTOR',
-                df_cols=['vintage', 'value', 'sensitivity'],
+                df_cols=['vintage', 'gau', 'value', 'sensitivity'],
                 drop_cols=['source', 'notes']),
+
+    CsvMetadata('TECH_CAPACITY_FACTOR',
+                df_cols=['vintage', 'gau', 'value', 'sensitivity']),
 
     CsvMetadata('TECH_STARTUP_COST',
                 drop_cols=['source', 'notes']),

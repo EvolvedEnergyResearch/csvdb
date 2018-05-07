@@ -1,0 +1,14 @@
+name,source ,notes,currency,currency_year,unit,geography,gau,geography_ map_key,interpolation_method,extrapolation_method,vintage,value
+GAS ICE,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,8.7
+New CT - AERO,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,12.2
+New CT - FRAME,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,6.4
+New CCGT,https://pse.com/aboutpse/EnergySupply/Documents/IRP_07-25-2016_Presentations.pdf,,USD,2016,kilowatt,global,all,,linear,nearest,2018,7.3
+SMALL HYDRO,https://atb.nrel.gov/,NSD 3 - Mid,USD,2016,kilowatt,global,all,,linear,nearest,2015,117
+SOLAR PV,,,USD,2016,kilowatt,global,all,,linear,nearest,2015,13
+SOLAR PV,,,USD,2016,kilowatt,global,all,,linear,nearest,2030,10
+WIND,https://atb.nrel.gov/,TRG 6 - Mid,USD,2016,kilowatt,global,all,,linear,nearest,2015,51
+WIND,https://atb.nrel.gov/,TRG 6 - Mid,USD,2016,kilowatt,global,all,,linear,nearest,2050,38
+GEOTHERMAL,https://atb.nrel.gov/,Hydro / Flash - Mid,USD,2016,kilowatt,global,all,,linear,nearest,2015,143
+PUMPED STORAGE,https://www.bv.com/docs/reports-studies/nrel-cost-report.pdf,,USD,2012,kilowatt,global,all,,linear,nearest,2015,30.8
+DISTRIBUTED SOLAR PV,https://atb.nrel.gov/,,USD,2016,kilowatt,global,all,,linear,nearest,2015,18
+DISTRIBUTED SOLAR PV,https://atb.nrel.gov/,,USD,2016,kilowatt,global,all,,linear,nearest,2025,8
