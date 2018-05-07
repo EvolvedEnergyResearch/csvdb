@@ -1,0 +1,6 @@
+name,source,notes,input,input_unit,output_unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,vintage,value,sensitivity
+hydrogen electrolysis,http://www.hydrogen.energy.gov/h2a_production_archive.html,alkaline electrolysis,electricity,kilowatt_hour,h2_kilogram,global,all,,linear,nearest,,2010,50,
+hydrogen electrolysis,http://www.hydrogen.energy.gov/h2a_production_archive.html,alkaline electrolysis,electricity,kilowatt_hour,h2_kilogram,global,all,,linear,nearest,,2025,46,
+power-to-gas,http://www.fondation-tuck.fr/upload/docs/application/pdf/2016-02/enea_consulting_-_the_potential_of_power-to-gas.pdf,,electricity,btu,btu,global,all,,linear,nearest,,2015,1.908251279,
+power-to-gas,http://www.fondation-tuck.fr/upload/docs/application/pdf/2016-02/enea_consulting_-_the_potential_of_power-to-gas.pdf,,electricity,btu,btu,global,all,,linear,nearest,,2030,1.825283832,
+power-to-gas,http://www.fondation-tuck.fr/upload/docs/application/pdf/2016-02/enea_consulting_-_the_potential_of_power-to-gas.pdf,,electricity,btu,btu,global,all,,linear,nearest,,2050,1.825283832,

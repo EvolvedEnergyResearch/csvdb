@@ -1,0 +1,2 @@
+name,source,notes,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,year,value,sensitivity
+hydrogen,,,gigajoule,state,california,,linear,nearest,,2015,10,

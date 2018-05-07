@@ -1,0 +1,8 @@
+name,type,incremental_to_existing,source,notes,unit,time_unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,year,value,sensitivity
+SOLAR,cumulative,1,IRP - Solar PV with Environmental Baseline Screen + Planned Past 2017,,megawatt,,state,california,,linear,nearest,,2017,79779.46,
+WIND,cumulative,1,IRP - Wind with Environmental Baseline Screen + Planned Past 2017,,megawatt,,state,california,,linear,nearest,,2017,10787,
+GEOTHERMAL,cumulative,1,IRP - Geothermal with Environmental Baseline Screen + Planned Past 2017,,megawatt,,state,california,,linear,nearest,,2017,2052,
+PUMPED STORAGE,cumulative,1,IRP Potential New,,megawatt,,state,california,,linear,nearest,,2025,6000,
+PUMPED STORAGE,cumulative,1,IRP Potential New,,megawatt,,state,california,,linear,nearest,,2020,4000,
+DISTRIBUTED SOLAR,cumulative,1,IRP Renewable Supply Curve - Distributed PV,Parking Lot,megawatt,,state,california,,linear,nearest,,2018,4000,
+SMALL HYDRO,cumulative,1,,,megawatt,,state,california,,linear,nearest,,2018,0,

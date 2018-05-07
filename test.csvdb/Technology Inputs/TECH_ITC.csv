@@ -1,0 +1,11 @@
+name,currency,currency_year,unit,input_type,vintage,value,sensitivity
+SOLAR PV,USD,2016,kW,intensity,2016,0.3,
+SOLAR PV,USD,2016,kW,intensity,2019,0.3,
+SOLAR PV,USD,2016,kW,intensity,2020,0.26,
+SOLAR PV,USD,2016,kW,intensity,2021,0.22,
+SOLAR PV,USD,2016,kW,intensity,2022,0.1,
+DISTRIBUTED SOLAR PV,USD,2016,kW,intensity,2016,0.3,
+DISTRIBUTED SOLAR PV,USD,2016,kW,intensity,2019,0.3,
+DISTRIBUTED SOLAR PV,USD,2016,kW,intensity,2020,0.26,
+DISTRIBUTED SOLAR PV,USD,2016,kW,intensity,2021,0.22,
+DISTRIBUTED SOLAR PV,USD,2016,kW,intensity,2022,0.1,

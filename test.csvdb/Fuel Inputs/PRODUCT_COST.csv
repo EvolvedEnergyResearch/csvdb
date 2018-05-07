@@ -1,0 +1,75 @@
+name,geography,gau,geography_map_key,interpolation_method,extrapolation_method,exponential_growth_rate,currency,currency_year,unit,year,value
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2016,3.448555781
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2017,3.739573729
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2018,4.00840987
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2019,4.276689521
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2020,4.57477155
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2021,4.811437156
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2022,5.123347123
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2023,5.44552556
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2024,5.779977553
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2025,5.903613437
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2026,6.02724932
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2027,6.150885204
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2028,6.274521087
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2029,6.398156971
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2030,6.521792854
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2031,6.645428738
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2032,6.769064621
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2033,6.892700505
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2034,7.016336388
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2035,7.139972272
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2036,7.263608155
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2037,7.387244039
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2038,7.510879922
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2039,7.634515806
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2040,7.758151689
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2041,7.881787573
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2042,8.005423456
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2043,8.12905934
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2044,8.252695223
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2045,8.376331107
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2046,8.49996699
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2047,8.623602874
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2048,8.747238757
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2049,8.870874641
+natural gas,state,california,,linear,nearest,,USD,2016,mmBtu,2050,8.994510524
+coal,state,california,,linear,nearest,,USD,2016,mmBtu,2016,2
+wood,state,california,,linear,exponential,0.02,USD,2015,mmBtu,2015,2.39
+uranium,state,california,,linear,nearest,,USD,2016,mmBtu,2016,0.7
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2015,11.7279
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2016,8.3842
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2017,10.8222
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2018,12.858
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2019,14.3898
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2020,15.4158
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2021,16.1672
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2022,17.023
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2023,17.3739
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2024,17.6585
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2025,18.2979
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2026,18.6999
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2027,19.2592
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2028,19.3104
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2029,19.627
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2030,20.1195
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2031,20.544
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2032,21.0037
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2033,21.0528
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2034,21.3696
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2035,21.5579
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2036,22.0526
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2037,22.1046
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2038,22.2427
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2039,22.5458
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2040,22.7134
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2041,22.7911
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2042,22.7706
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2043,22.8237
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2044,22.9657
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2045,23.13
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2046,23.3026
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2047,23.5999
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2048,23.6483
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2049,23.9579
+distillate fuel oil,state,california,,linear,nearest,,USD,2016,mmBtu,2050,24.191

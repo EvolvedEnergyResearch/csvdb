@@ -1,0 +1,9 @@
+name,fuel,limit
+coal,coal,1
+uranium,uranium,1
+pipeline gas,natural gas,1
+biomass,biomass,1
+pipeline gas,power-to-gas,1
+pipeline gas,hydrogen electrolysis,0.07
+diesel fuels,distillate fuel oil,1
+hydrogen,hydrogen electrolysis,1

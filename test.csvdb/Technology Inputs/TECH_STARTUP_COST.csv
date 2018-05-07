@@ -1,0 +1,5 @@
+name,source,notes,currency,currency_year,unit,value,sensitivity
+GAS ICE,,,USD,2012,megawatt,,
+CT - AERO,https://www.nrel.gov/docs/fy12osti/55433.pdf,Typical Warm Start,USD,2012,megawatt,1.9,
+CT - FRAME,https://www.nrel.gov/docs/fy12osti/55433.pdf,Typical Warm Start,USD,2012,megawatt,0.95,
+CCGT,https://www.nrel.gov/docs/fy12osti/55433.pdf,Typical Warm Start,USD,2012,megawatt,0,

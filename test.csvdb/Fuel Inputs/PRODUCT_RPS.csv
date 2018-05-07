@@ -1,0 +1,3 @@
+name,geography,gau,geography_map_key,interpolation_method,extrapolation_method,exponential_growth_rate,year,value
+biomass,state,california,,linear,nearest,,2016,1
+landfill gas,state,california,,linear,nearest,,2016,1

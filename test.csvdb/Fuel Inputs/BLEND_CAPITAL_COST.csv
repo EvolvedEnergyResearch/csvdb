@@ -1,0 +1,2 @@
+name,source,notes,currency,currency_year,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,recovery_factor,levelized,vintage,value,sensitivity
+hydrogen,https://www.hydrogen.energy.gov/pdfs/progress11/x_2_schoenung_2011.pdf,,USD,2010,kilowatt_hour,global,all,,linear,nearest,,0.07,,2010,15.3,

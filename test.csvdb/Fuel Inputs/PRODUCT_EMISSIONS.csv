@@ -1,0 +1,4 @@
+name,source,notes,geography,gau,interpolation_method,extrapolation_method,extrapolation_growth_rate,mass_unit,energy_unit,year,value
+natural gas,https://www.epa.gov/sites/production/files/2015-07/documents/emission-factors_2014.pdf,,global,all,linear,nearest,,kilogram,mmBtu,2016,53.06
+coal,https://www.epa.gov/sites/production/files/2015-07/documents/emission-factors_2014.pdf,bituminous coal,global,all,linear,nearest,,kilogram,mmBtu,2016,93.28
+distillate fuel oil,https://www.epa.gov/sites/production/files/2015-07/documents/emission-factors_2014.pdf,Distillate Fuel Oil No. 2,global,all,linear,nearest,,kilogram,mmBtu,2016,73.96

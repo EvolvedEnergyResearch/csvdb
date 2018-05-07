@@ -1,0 +1,5 @@
+name,type,geography,gau,geography_map_key,year,value
+hydrogen electrolysis,demand,state,california,,2015,1
+hydrogen electrolysis,supply,state,california,,2015,1
+power-to-gas,demand,state,california,,2015,1
+power-to-gas,supply,state,california,,2015,1

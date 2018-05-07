@@ -1,0 +1,3 @@
+name,source ,notes,currency,currency_year,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,vintage,value
+hydrogen electrolysis,http://www.hydrogen.energy.gov/h2a_production_archive.html,,USD,2007,h2_kilogram,global,all,,linear,nearest,2010,0.0323
+hydrogen electrolysis,http://www.hydrogen.energy.gov/h2a_production_archive.html,,USD,2007,h2_kilogram,global,all,,linear,nearest,2025,0.031

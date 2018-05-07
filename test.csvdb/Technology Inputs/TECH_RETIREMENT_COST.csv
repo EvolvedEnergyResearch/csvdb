@@ -1,0 +1,2 @@
+name,source,notes,currency,currency_year,cost_type,unit,time_unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,recovery_factor,levelized,vintage,value,sensitivity
+CT - AERO,,TEST ONLY,USD,2016,capacity,kilowatt,,global,all,,linear,nearest,0.066,FALSE,2018,10,

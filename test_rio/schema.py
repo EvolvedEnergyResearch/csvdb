@@ -2,11 +2,11 @@
 # This is a generated file. Manual edits may be lost!
 #
 import sys
-from rio_database import RioData # superclass of generated classes
+from rio_database import DataMapper # superclass of generated classes
 
 _Module = sys.modules[__name__]  # get ref to our own module object
 
-class TechCapacityFactor(RioData):
+class TechCapacityFactor(DataMapper):
     _instances_by_key = {}
     _table_name = "TECH_CAPACITY_FACTOR"
     _key_col = "name"
@@ -17,7 +17,7 @@ class TechCapacityFactor(RioData):
     _data_table_name = None
 
     def __init__(self, name, scenario):
-        RioData.__init__(self, name, scenario)
+        DataMapper.__init__(self, name, scenario)
 
         TechCapacityFactor._instances_by_key[self._key] = self
 
@@ -45,7 +45,7 @@ class TechCapacityFactor(RioData):
         self.set_args(scenario, extrapolation_method=extrapolation_method, gau=gau, geography=geography,
                   geography_map_key=geography_map_key, interpolation_method=interpolation_method, name=name)
 
-class TechCapitalCost(RioData):
+class TechCapitalCost(DataMapper):
     _instances_by_key = {}
     _table_name = "TECH_CAPITAL_COST"
     _key_col = "name"
@@ -56,7 +56,7 @@ class TechCapitalCost(RioData):
     _data_table_name = None
 
     def __init__(self, name, scenario):
-        RioData.__init__(self, name, scenario)
+        DataMapper.__init__(self, name, scenario)
 
         TechCapitalCost._instances_by_key[self._key] = self
 
@@ -98,7 +98,7 @@ class TechCapitalCost(RioData):
                   interpolation_method=interpolation_method, levelized=levelized, name=name,
                   recovery_factor=recovery_factor, time_unit=time_unit, unit=unit)
 
-class TechMain(RioData):
+class TechMain(DataMapper):
     _instances_by_key = {}
     _table_name = "TECH_MAIN"
     _key_col = "name"
@@ -112,7 +112,7 @@ class TechMain(RioData):
     _data_table_name = None
 
     def __init__(self, name, scenario):
-        RioData.__init__(self, name, scenario)
+        DataMapper.__init__(self, name, scenario)
 
         TechMain._instances_by_key[self._key] = self
 
@@ -188,7 +188,7 @@ class TechMain(RioData):
                   ramp_rate_time_unit=ramp_rate_time_unit, shape=shape, type=type,
                   typical_unit_size=typical_unit_size)
 
-class TechStartupCost(RioData):
+class TechStartupCost(DataMapper):
     _instances_by_key = {}
     _table_name = "TECH_STARTUP_COST"
     _key_col = "name"
@@ -198,7 +198,7 @@ class TechStartupCost(RioData):
     _data_table_name = None
 
     def __init__(self, name, scenario):
-        RioData.__init__(self, name, scenario)
+        DataMapper.__init__(self, name, scenario)
 
         TechStartupCost._instances_by_key[self._key] = self
 

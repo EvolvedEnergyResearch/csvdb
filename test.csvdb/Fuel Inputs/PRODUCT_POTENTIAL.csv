@@ -1,0 +1,2 @@
+name,source,notes,unit,interpolation_method,extrapolation_method,extrapolation_growth_rate,year,value
+landfill gas,http://www.bioenergyca.org/wp-content/uploads/2015/03/BAC_RenewableGasStandard_2015.pdf,,US_gge,linear,nearest,,2020,4.57E+08

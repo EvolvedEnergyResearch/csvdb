@@ -1,0 +1,7 @@
+name,unit_in,unit_out,blend_in,blend_out,vintage,max_load_value,min_load_value
+GAS ICE,btu,kilowatt hour,pipeline gas,electricity,2016,8400,8400
+New CT - AERO,btu,kilowatt hour,pipeline gas,electricity,2016,8616,10199
+New CT - FRAME,btu,kilowatt hour,pipeline gas,electricity,2016,9946,9946
+New CCGT,btu,kilowatt hour,pipeline gas,electricity,2016,6029,7323.115
+LI-ION,btu,btu,electricity,electricity,2016,0.85,0.85
+PUMPED STORAGE,btu,btu,electricity,electricity,2016,0.75,0.85
