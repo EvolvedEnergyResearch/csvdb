@@ -2,7 +2,13 @@
 # This is a generated file. Manual edits may be lost!
 #
 import sys
-from csvdb.data_object import DataObject # superclass of generated classes
+import os
+
+# if os.environ['USER'] == 'rjp':
+#     from csvdb.data_object import DataObject
+# else:
+
+from RIO.csvdb.csvdb.data_object import DataObject
 
 _Module = sys.modules[__name__]  # get ref to our own module object
 

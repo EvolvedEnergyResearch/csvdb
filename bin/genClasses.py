@@ -13,7 +13,6 @@ import os
 if os.environ['USER'] == 'rjp':
     from csvdb import *
 else:
-    # TODO: Ryan should add whatever is needed here
     from RIO.csvdb.csvdb import *
 
 

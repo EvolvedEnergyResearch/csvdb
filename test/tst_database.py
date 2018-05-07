@@ -1,4 +1,4 @@
-from csvdb import *
+from RIO.csvdb.csvdb.database import *
 
 _Metadata = [
     CsvMetadata('GeographiesSpatialJoin',
