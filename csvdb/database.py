@@ -17,6 +17,8 @@
 # from datamapfunctions.py, modified to operate on string keys rather than integer ids.
 #
 from __future__ import print_function
+from glob import glob
+import gzip
 import os
 import pandas as pd
 
@@ -53,6 +55,43 @@ class CsvMetadata(object):
             self.drop_cols  = drop_cols or []
             self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
 
+SHAPE_DIR = 'ShapeData'
+
+class ShapeDataMgr(object):
+    """
+    Handles the special case of the pre-sliced ShapesData
+    """
+    def __init__(self, db_path):
+        self.db_path = db_path
+        self.tbl_name = SHAPE_DIR
+        self.slices = {}        # maps shape name to DF containing that shape's data rows
+        self.file_map = {}
+
+    def load_all(self):
+        if self.slices:
+            return self.slices
+
+        # ShapeData is stored in gzipped slices of original 3.5 GB table.
+        # The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
+        shape_files = glob(os.path.join(self.db_path, self.tbl_name, '*.csv.gz'))
+
+        for filename in shape_files:
+            basename = os.path.basename(filename)
+            shape_name = basename.split('.')[0]
+
+            with gzip.open(filename, 'rb') as f:
+                print("Reading shape data for {}".format(shape_name))
+                df = pd.read_csv(f, index_col=None)
+                self.slices[shape_name] = df
+
+    def get_slice(self, name):
+        if not self.slices:
+            self.load_all()
+
+        name = name.replace(' ', '_')
+        return self.slices[name]
+
+
 class CsvDatabase(object):
     """
     A database class that caches table data and provides a few fetch methods.
@@ -62,8 +101,7 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None,
                  # Deprecated: given explicit metadata, can probably drop these arguments
-                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
-                 tables_to_load_on_demand=None):
+                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None):
         """
         Initialize a CsvDatabase.
 
@@ -88,11 +126,11 @@ class CsvDatabase(object):
 
         self.tables_without_classes = tables_without_classes or []
         self.tables_to_ignore = tables_to_ignore or []
-        self.tables_to_load_on_demand = tables_to_load_on_demand or []
 
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
+        self.shapes = ShapeDataMgr(pathname)
 
         # cache data for all tables for which there are generated classes
         if load:
@@ -155,7 +193,7 @@ class CsvDatabase(object):
         tables = [name for name in self.get_table_names() if name not in exclude]
         data_tables = [name for name, md in self.metadata.items() if md.data_table]
 
-        ignore = data_tables + self.tables_to_ignore + (self.tables_to_load_on_demand if not include_on_demand else [])
+        ignore = data_tables + self.tables_to_ignore
         result = sorted(list(set(tables) - set(ignore)))
         return result
 
@@ -219,6 +257,9 @@ class CsvDatabase(object):
             raise CsvdbException('Database path "{}" is not a directory'.format(pathname))
 
         for dirpath, dirnames, filenames in os.walk(pathname, topdown=False):
+            if os.path.basename(dirpath) == SHAPE_DIR:
+                continue
+
             for filename in filenames:
                 basename = os.path.basename(filename)
                 if (basename.endswith('.csv') or basename.endswith('.gz')):

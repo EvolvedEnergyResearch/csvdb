@@ -83,6 +83,12 @@ def main():
 
     ccgt_obj = DispatchableThermal('CCGT', scenario)
     ccgt_obj.show_costs()
+
+    # Shapes data are loaded by calling db.shapes.load_all() or automatically,
+    # on the first call to db.shapes.get_slice().
+    ag_shapes = db.shapes.get_slice('Agriculture')
+    print("\nAgriculture shapes:\n", ag_shapes)
+
     print('done')
 
 if __name__ == '__main__':
