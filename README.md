@@ -20,7 +20,7 @@ The `CsvMetadata` constructor takes these args:
 #!python
 
     def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
-                 df_cols=None, df_key_col=None, drop_cols=None):
+                 df_cols=None, df_key_col=None, drop_cols=None, upcase_cols=None):
 ```
 * `table_name` (str) The basename of a CSV datafile, e.g., for file `MY_DATA.csv`, the table name is `MY_DATA`.
 
@@ -38,6 +38,8 @@ Defaults to the empty list.
 
 * `drop_cols` (list of str) Columns to ignore, i.e., metadata that is not processed by the application.
 Defaults to the empty list.
+
+* `upcase_cols` (list of str) Columns whose values should be forced to uppercase on reading. The `key_col`, if any, is automatically forced to uppercase, so it need not be specified (though it is ok to do so.)
 
 ## Class hierarchy for data classes
 
