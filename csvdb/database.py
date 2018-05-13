@@ -30,10 +30,10 @@ pd.set_option('display.width', 200)
 
 class CsvMetadata(object):
     __slots__ = ['table_name', 'data_table', 'key_col', 'attr_cols',
-                 'df_cols', 'df_key_col', 'drop_cols', 'upcase_cols']
+                 'df_cols', 'df_value_col', 'df_key_col', 'drop_cols', 'lowcase_cols']
 
     def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
-                 df_cols=None, df_key_col=None, drop_cols=None, upcase_cols=None):
+                 df_cols=None, df_value_col=None, df_key_col=None, drop_cols=None, lowcase_cols=None):
         """
         A simple struct to house table metadata. Attribute columns (`attr_cols`)
         become instance variables in generated classes. Dataframe columns (`df_cols`)
@@ -53,11 +53,12 @@ class CsvMetadata(object):
             self.key_col    = key_col or 'name'
             self.df_key_col = df_key_col
             self.df_cols    = df_cols or []
+            self.df_value_col = df_value_col or 'value'
             self.drop_cols  = drop_cols or []
             self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
 
         key_col = self.key_col
-        self.upcase_cols = set((upcase_cols or []) + ([key_col] if key_col else []))
+        self.lowcase_cols = set((lowcase_cols or []) + ([key_col] if key_col else []))
 
 SHAPE_DIR = 'ShapeData'
 

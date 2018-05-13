@@ -106,8 +106,8 @@ class CsvTable(object):
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
         self.data = df = df.where(pd.notnull(df), other=None)
 
-        for col in md.upcase_cols:
-            df[col] = df[col].str.upper()
+        for col in md.lowcase_cols:
+            df[col] = df[col].str.lower()
 
         rows, cols = df.shape
         print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))

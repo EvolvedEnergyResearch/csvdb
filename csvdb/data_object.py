@@ -98,17 +98,21 @@ class DataObject(object):
         cols = md.attr_cols + [df_key_col]
         attrs = matches[cols].drop_duplicates()
 
-        if len(attrs) > 1 and not df_key_col:
+        if len(attrs) > 1:
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_key_col defined".format(
                 tbl_name, len(attrs)))
 
         df_key = attrs[df_key_col].iloc[0]
         slice = matches.query(col_match(df_key_col, df_key))
         timeseries = slice[md.df_cols]
+        timeseries = timeseries.set_index([c for c in md.df_cols if c!=md.df_value_col]).sort_index()
+        timeseries = timeseries.astype(float)
+        if 'gau' in timeseries.index.names:
+            timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
         self._timeseries = timeseries.copy(deep=True)
 
         row = attrs.drop(df_key_col, axis=1)
-        tup = tuple(row)
+        tup = tuple(row.values[0])
         return tup
 
     def init_from_db(self, key, scenario, **filters):
@@ -116,7 +120,7 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        key = key.upper()
+        key = key.lower()
 
         if md.df_cols:
             tup = self.load_timeseries(key, **filters)
