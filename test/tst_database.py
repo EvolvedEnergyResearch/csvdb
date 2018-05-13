@@ -13,9 +13,10 @@ _Metadata = [
                 key_col='name',
                 df_key_col='cost_type',
                 df_cols=['sensitivity', 'gau', 'vintage', 'value'],
-                drop_cols=['source', 'notes']),
+                drop_cols=['source', 'notes'],
+                upcase_cols=['sensitivity']),
 
-    CsvMetadata('TECH_CAPACITY_FACTOR',
+CsvMetadata('TECH_CAPACITY_FACTOR',
                 df_cols=['vintage', 'value', 'sensitivity'],
                 drop_cols=['source', 'notes']),
 
