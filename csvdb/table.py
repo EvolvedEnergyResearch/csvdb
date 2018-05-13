@@ -83,12 +83,11 @@ class CsvTable(object):
         df.columns = map(str.strip, df.columns)
 
         self._compute_metadata()
-
-        col = self.metadata.key_col
+        md = self.metadata
+        col = md.key_col
 
         # Raise error if the key column is missing any values
         if col and len(df):
-            self.data[col] = self.data[col].str.upper()
             if (col not in df.columns):
                 raise MissingKeyColumn(tbl_name, col)
 
@@ -106,6 +105,9 @@ class CsvTable(object):
 
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
         self.data = df = df.where(pd.notnull(df), other=None)
+
+        for col in md.upcase_cols:
+            df[col] = df[col].str.upper()
 
         rows, cols = df.shape
         print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))

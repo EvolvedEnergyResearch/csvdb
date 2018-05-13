@@ -122,10 +122,13 @@ class DataObject(object):
             tup = self.load_timeseries(key, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
+            cols = tbl.get_columns()
+
             if tup is None:
-                tup = [None]*len(tbl.get_columns())
+                tup = [None] * len(cols)
+
             # filter out the non-attribute columns
-            tup = [t for t, c in zip(tup, tbl.get_columns()) if c in md.attr_cols]
+            tup = [t for t, c in zip(tup, cols) if c in md.attr_cols]
 
         if tup:
             self.init_from_tuple(tup, scenario)
