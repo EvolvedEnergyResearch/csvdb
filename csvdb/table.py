@@ -87,8 +87,8 @@ class CsvTable(object):
         col = self.metadata.key_col
 
         # Raise error if the key column is missing any values
-
         if col and len(df):
+            self.data[col] = self.data[col].str.upper()
             if (col not in df.columns):
                 raise MissingKeyColumn(tbl_name, col)
 
@@ -115,7 +115,7 @@ class CsvTable(object):
         df = self.data if df is None else df
         return SENSITIVITY_COL in df.columns
 
-    def get_row(self, key_col, key, scenario=None, allow_multiple=False, raise_error=True):
+    def get_row(self, key_col, key, scenario=None, allow_multiple=False, raise_error=False):
         """
         Get a tuple for the row with the given id in the table associated with this class.
         Expects to find exactly one row with the given id. The `key` and `scenario` together

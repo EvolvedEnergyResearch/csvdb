@@ -1,6 +1,6 @@
 from __future__ import print_function
 from collections import defaultdict
-
+import pdb
 import numpy as np
 
 from .database import CsvDatabase
@@ -116,11 +116,14 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
+        key = key.upper()
 
         if md.df_cols:
             tup = self.load_timeseries(key, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
+            if tup is None:
+                tup = [None]*len(tbl.get_columns())
             # filter out the non-attribute columns
             tup = [t for t, c in zip(tup, tbl.get_columns()) if c in md.attr_cols]
 
@@ -128,7 +131,7 @@ class DataObject(object):
             self.init_from_tuple(tup, scenario)
 
     @classmethod
-    def get_row(cls, key, scenario=None, raise_error=True):
+    def get_row(cls, key, scenario=None, raise_error=False):
         """
         Get a tuple for the row with the given id in the table associated with this class.
         Expects to find exactly one row with the given id. User must instantiate the database

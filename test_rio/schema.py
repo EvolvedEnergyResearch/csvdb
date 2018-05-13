@@ -2,7 +2,7 @@
 # This is a generated file. Manual edits may be lost!
 #
 import sys
-from RIO.csvdb.test_rio.rio_database import DataMapper # superclass of generated classes
+from rio_database import DataMapper # superclass of generated classes
 
 _Module = sys.modules[__name__]  # get ref to our own module object
 
