@@ -14,7 +14,7 @@ class BlendCapitalCost(DataObject):
              "geography", "geography_map_key", "interpolation_method", "levelized", "name",
              "recovery_factor", "unit"]
     _df_cols = ["sensitivity", "gau", "vintage", "value"]
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -68,7 +68,7 @@ class BlendExistingStorage(DataObject):
     _cols = ["extrapolation_growth_rate", "extrapolation_method", "geography", "geography_map_key",
              "interpolation_method", "name", "unit"]
     _df_cols = ["sensitivity", "gau", "year", "value"]
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -111,7 +111,7 @@ class BlendExoDemand(DataObject):
     _key_col = "name"
     _cols = ["name", "unit", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -143,7 +143,7 @@ class BlendFuelInputs(DataObject):
     _key_col = "name"
     _cols = ["fuel", "limit", "name"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -173,7 +173,7 @@ class BlendMain(DataObject):
     _key_col = "name"
     _cols = ["book_life", "enforce_storage_constraints", "lifetime", "name"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -208,7 +208,7 @@ class ConversionCapitalCost(DataObject):
              "geography", "geography_map_key", "interpolation_method", "levelized", "name",
              "recovery_factor", "time_unit", "unit"]
     _df_cols = ["sensitivity", "gau", "vintage", "value"]
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -267,7 +267,7 @@ class ConversionEfficiency(DataObject):
     _cols = ["extrapolation_growth_rate", "extrapolation_method", "geography", "geography_map_key",
              "input", "input_unit", "interpolation_method", "name", "output_unit"]
     _df_cols = ["sensitivity", "gau", "vintage", "value"]
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -317,7 +317,7 @@ class ConversionFixedOmAnn(DataObject):
              "geography_map_key", "interpolation_method", "name", "notes", "source", "time_unit",
              "unit", "value", "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -375,7 +375,7 @@ class ConversionMain(DataObject):
     _key_col = "name"
     _cols = ["name"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -401,7 +401,7 @@ class ConversionRps(DataObject):
     _key_col = "name"
     _cols = ["gau", "geography", "geography_map_key", "name", "type", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -443,7 +443,7 @@ class ConversionVariableOm(DataObject):
              "geography_map_key", "interpolation_method", "name", "notes", "source", "unit", "value",
              "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -501,7 +501,7 @@ class ExistingMain(DataObject):
              "load_p_max", "load_p_min", "name", "operating_year", "ramp_rate", "ramp_rate_time_unit",
              "retirement_year", "shape", "technology_type", "unit"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -560,6 +560,65 @@ class ExistingMain(DataObject):
                   ramp_rate=ramp_rate, ramp_rate_time_unit=ramp_rate_time_unit,
                   retirement_year=retirement_year, shape=shape, technology_type=technology_type, unit=unit)
 
+class NewTechCapitalCost(DataObject):
+    _instances_by_key = {}
+    _table_name = "NEW_TECH_CAPITAL_COST"
+    _key_col = "name"
+    _cols = ["cost_type", "currency", "currency_year", "extrapolation_method", "geography",
+             "geography_map_key", "interpolation_method", "levelized", "lifecycle", "name",
+             "recovery_factor", "time_unit", "unit"]
+    _df_cols = ["sensitivity", "gau", "vintage", "value"]
+    _df_filters = ["cost_type", "lifecycle"]
+    _data_table_name = None
+
+    def __init__(self, name, scenario):
+        DataObject.__init__(self, name, scenario)
+
+        NewTechCapitalCost._instances_by_key[self._key] = self
+
+        self.cost_type = None
+        self.currency = None
+        self.currency_year = None
+        self.extrapolation_method = None
+        self.geography = None
+        self.geography_map_key = None
+        self.interpolation_method = None
+        self.levelized = None
+        self.lifecycle = None
+        self.name = None
+        self.recovery_factor = None
+        self.time_unit = None
+        self.unit = None
+
+    def set_args(self, scenario, cost_type=None, currency=None, currency_year=None, extrapolation_method=None,
+                 geography=None, geography_map_key=None, interpolation_method=None, levelized=None,
+                 lifecycle=None, name=None, recovery_factor=None, time_unit=None, unit=None):
+        self.check_scenario(scenario)
+
+        self.cost_type = cost_type
+        self.currency = currency
+        self.currency_year = currency_year
+        self.extrapolation_method = extrapolation_method
+        self.geography = geography
+        self.geography_map_key = geography_map_key
+        self.interpolation_method = interpolation_method
+        self.levelized = levelized
+        self.lifecycle = lifecycle
+        self.name = name
+        self.recovery_factor = recovery_factor
+        self.time_unit = time_unit
+        self.unit = unit
+
+    def init_from_tuple(self, tup, scenario, **kwargs):    
+        (name, currency, currency_year, cost_type, lifecycle, unit, time_unit, geography,
+         geography_map_key, interpolation_method, extrapolation_method, recovery_factor, levelized) = tup
+
+        self.set_args(scenario, cost_type=cost_type, currency=currency, currency_year=currency_year,
+                  extrapolation_method=extrapolation_method, geography=geography,
+                  geography_map_key=geography_map_key, interpolation_method=interpolation_method,
+                  levelized=levelized, lifecycle=lifecycle, name=name, recovery_factor=recovery_factor,
+                  time_unit=time_unit, unit=unit)
+
 class ProductCost(DataObject):
     _instances_by_key = {}
     _table_name = "PRODUCT_COST"
@@ -567,7 +626,7 @@ class ProductCost(DataObject):
     _cols = ["currency", "currency_year", "exponential_growth_rate", "extrapolation_method", "gau",
              "geography", "geography_map_key", "interpolation_method", "name", "unit", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -623,7 +682,7 @@ class ProductEmissions(DataObject):
     _cols = ["energy_unit", "extrapolation_growth_rate", "extrapolation_method", "gau", "geography",
              "interpolation_method", "mass_unit", "name", "notes", "source", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -677,7 +736,7 @@ class ProductMain(DataObject):
     _key_col = "name"
     _cols = ["name"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -704,7 +763,7 @@ class ProductPotential(DataObject):
     _cols = ["extrapolation_growth_rate", "extrapolation_method", "interpolation_method", "name",
              "notes", "source", "unit", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -751,7 +810,7 @@ class ProductRps(DataObject):
     _cols = ["exponential_growth_rate", "extrapolation_method", "gau", "geography",
              "geography_map_key", "interpolation_method", "name", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -799,7 +858,7 @@ class TechCapacityFactor(DataObject):
     _cols = ["extrapolation_method", "gau", "geography", "geography_map_key", "interpolation_method",
              "name"]
     _df_cols = ["vintage", "value", "sensitivity"]
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -835,10 +894,11 @@ class TechCapitalCost(DataObject):
     _instances_by_key = {}
     _table_name = "TECH_CAPITAL_COST"
     _key_col = "name"
-    _cols = ["currency", "currency_year", "extrapolation_method", "geography", "geography_map_key",
-             "interpolation_method", "levelized", "name", "recovery_factor", "time_unit", "unit"]
+    _cols = ["cost_type", "currency", "currency_year", "extrapolation_method", "geography",
+             "geography_map_key", "interpolation_method", "levelized", "name", "recovery_factor",
+             "time_unit", "unit"]
     _df_cols = ["sensitivity", "gau", "vintage", "value"]
-    _df_key_col = "cost_type"
+    _df_filters = ["cost_type"]
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -846,6 +906,7 @@ class TechCapitalCost(DataObject):
 
         TechCapitalCost._instances_by_key[self._key] = self
 
+        self.cost_type = None
         self.currency = None
         self.currency_year = None
         self.extrapolation_method = None
@@ -858,11 +919,12 @@ class TechCapitalCost(DataObject):
         self.time_unit = None
         self.unit = None
 
-    def set_args(self, scenario, currency=None, currency_year=None, extrapolation_method=None, geography=None,
-                 geography_map_key=None, interpolation_method=None, levelized=None, name=None,
-                 recovery_factor=None, time_unit=None, unit=None):
+    def set_args(self, scenario, cost_type=None, currency=None, currency_year=None, extrapolation_method=None,
+                 geography=None, geography_map_key=None, interpolation_method=None, levelized=None,
+                 name=None, recovery_factor=None, time_unit=None, unit=None):
         self.check_scenario(scenario)
 
+        self.cost_type = cost_type
         self.currency = currency
         self.currency_year = currency_year
         self.extrapolation_method = extrapolation_method
@@ -876,13 +938,14 @@ class TechCapitalCost(DataObject):
         self.unit = unit
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, time_unit, geography, geography_map_key,
+        (name, currency, currency_year, cost_type, unit, time_unit, geography, geography_map_key,
          interpolation_method, extrapolation_method, recovery_factor, levelized) = tup
 
-        self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
-                  geography=geography, geography_map_key=geography_map_key,
-                  interpolation_method=interpolation_method, levelized=levelized, name=name,
-                  recovery_factor=recovery_factor, time_unit=time_unit, unit=unit)
+        self.set_args(scenario, cost_type=cost_type, currency=currency, currency_year=currency_year,
+                  extrapolation_method=extrapolation_method, geography=geography,
+                  geography_map_key=geography_map_key, interpolation_method=interpolation_method,
+                  levelized=levelized, name=name, recovery_factor=recovery_factor, time_unit=time_unit,
+                  unit=unit)
 
 class TechCurtailmentCost(DataObject):
     _instances_by_key = {}
@@ -890,7 +953,7 @@ class TechCurtailmentCost(DataObject):
     _key_col = "name"
     _cols = ["currency", "currency_year", "name", "sensitivity", "unit", "value", "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -931,7 +994,7 @@ class TechEfficiency(DataObject):
     _cols = ["blend_in", "blend_out", "max_load_value", "min_load_value", "name", "unit_in",
              "unit_out", "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -976,7 +1039,7 @@ class TechFixedOm(DataObject):
              "geography_map_key", "interpolation_method", "name", "notes", "source", "unit", "value",
              "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1033,7 +1096,7 @@ class TechItc(DataObject):
     _cols = ["currency", "currency_year", "input_type", "name", "sensitivity", "unit", "value",
              "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1079,7 +1142,7 @@ class TechMain(DataObject):
              "potential_group", "ramp_rate", "ramp_rate_time_unit", "shape", "type",
              "typical_unit_size", "zone"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1166,7 +1229,7 @@ class TechPotential(DataObject):
              "geography_map_key", "incremental_to_existing", "interpolation_method", "name", "notes",
              "sensitivity", "source", "time_unit", "type", "unit", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1232,7 +1295,7 @@ class TechPtc(DataObject):
     _key_col = "name"
     _cols = ["currency", "currency_year", "name", "sensitivity", "unit", "value", "vintage", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1276,7 +1339,7 @@ class TechRetirementCost(DataObject):
              "geography_map_key", "interpolation_method", "levelized", "name", "notes",
              "recovery_factor", "sensitivity", "source", "time_unit", "unit", "value", "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1346,7 +1409,7 @@ class TechRps(DataObject):
     _key_col = "name"
     _cols = ["RPS", "load_modifier", "name", "sensitivity", "vintage", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1384,7 +1447,7 @@ class TechSchedule(DataObject):
     _cols = ["extrapolation_method", "gau", "geography", "geography_map_key", "interpolation_method",
              "name", "sensitivity", "time_unit", "type", "unit", "value", "year"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1438,7 +1501,7 @@ class TechShutdownCost(DataObject):
     _key_col = "name"
     _cols = ["currency", "currency_year", "name", "notes", "source", "unit", "value"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1478,7 +1541,7 @@ class TechStartupCost(DataObject):
     _key_col = "name"
     _cols = ["currency", "currency_year", "name", "sensitivity", "unit", "value"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):
@@ -1517,7 +1580,7 @@ class TechVariableOm(DataObject):
              "geography_map_key", "interpolation_method", "name", "notes", "sensitivity", "source",
              "unit", "value", "vintage"]
     _df_cols = []
-    _df_key_col = "None"
+    _df_filters = []
     _data_table_name = None
 
     def __init__(self, name, scenario):

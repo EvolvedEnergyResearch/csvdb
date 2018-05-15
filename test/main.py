@@ -67,7 +67,7 @@ def main():
     tech_main  = db.get_table("TECH_MAIN")
     print("\nTECH_MAIN\n", tech_main.data)
 
-    cap_cost_tbl = db.get_table("TECH_CAPITAL_COST")
+    cap_cost_tbl = db.get_table("NEW_TECH_CAPITAL_COST")
 
     # Get copies of dataframe slices
     wind_cap_cost_df = cap_cost_tbl.get_dataframe("WIND")

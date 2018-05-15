@@ -56,10 +56,10 @@ class ClassGenerator(object):
         md = tbl.metadata
 
         # Default values are computed in CsvTable.__init__()
-        key_col    = md.key_col
-        attr_cols  = md.attr_cols
-        df_cols    = md.df_cols
-        df_key_col = md.df_key_col
+        key_col     = md.key_col
+        attr_cols   = md.attr_cols
+        df_cols     = md.df_cols
+        df_filters  = md.df_filters
 
         stream.write('    _table_name = "{}"\n'.format(table))
         stream.write('    _key_col = "{}"\n'.format(key_col))  # save as a class variable
@@ -74,7 +74,7 @@ class ClassGenerator(object):
         sorted_attrs = sorted(attr_cols)
         write_class_var('_cols', sorted_attrs)
         write_class_var('_df_cols', df_cols)
-        write_class_var('_df_key_col', df_key_col)
+        write_class_var('_df_filters', df_filters)
 
         data_table = table + 'Data'
         if data_table not in self.all_tables:

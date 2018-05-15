@@ -5,7 +5,7 @@ import numpy as np
 
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
-from .utils import col_match
+from .utils import col_match, filter_query
 
 def get_database():
     return CsvDatabase.get_database(None)
@@ -80,14 +80,15 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
-        df = tbl.data
-        df_key_col = md.df_key_col
+        if tbl_name == 'NEW_TECH_CAPITAL_COST':
+            pass
 
-        key_cond = col_match(md.key_col, key)
-        filter_conds = [col_match(attr, value) for attr, value in filters.items()]
-        conds = [key_cond] + filter_conds
-        query = ' and '.join(conds)
-        matches = df.query(query)
+        df = tbl.data
+        df_filters = md.df_filters
+
+        # Process key match as another filter
+        filters[md.key_col] = key
+        matches = filter_query(df, filters)
 
         # TODO: should this be an error?
         if len(matches) == 0:
@@ -95,23 +96,36 @@ class DataObject(object):
             return None
 
         # Find the unique sets of attributes for which to create a DF
-        cols = md.attr_cols + [df_key_col]
-        attrs = matches[cols].drop_duplicates()
+        attr_cols = md.attr_cols
+        cols = attr_cols + [col for col in df_filters if col not in attr_cols]
+        attrs = matches[cols]
 
         if len(attrs) > 1:
-            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_key_col defined".format(
+            attrs = attrs.drop_duplicates()
+
+        if len(attrs) > 1:
+            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(
                 tbl_name, len(attrs)))
 
-        df_key = attrs[df_key_col].iloc[0]
-        slice = matches.query(col_match(df_key_col, df_key))
+        if df_filters:
+            df_keys = attrs[df_filters].iloc[0]
+            conds = [col_match(attr, value) for attr, value in zip(df_filters, df_keys)]
+            query = ' and '.join(conds)
+            slice = matches.query(query)
+        else:
+            slice = matches
+
         timeseries = slice[md.df_cols]
-        timeseries = timeseries.set_index([c for c in md.df_cols if c!=md.df_value_col]).sort_index()
+        timeseries = timeseries.set_index([c for c in md.df_cols if c != md.df_value_col]).sort_index()
         timeseries = timeseries.astype(float)
         if 'gau' in timeseries.index.names:
             timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
         self._timeseries = timeseries.copy(deep=True)
 
-        row = attrs.drop(df_key_col, axis=1)
+        # Don't drop filter cols. Make this optional? (N.B. also affects genClasses)
+        # row = attrs.drop(df_filters, axis=1)
+        row = attrs
+
         tup = tuple(row.values[0])
         return tup
 
@@ -138,7 +152,7 @@ class DataObject(object):
             self.init_from_tuple(tup, scenario)
 
     @classmethod
-    def get_row(cls, key, scenario=None, raise_error=False):
+    def get_row(cls, key, scenario=None, raise_error=False, **filters):
         """
         Get a tuple for the row with the given id in the table associated with this class.
         Expects to find exactly one row with the given id. User must instantiate the database
@@ -148,11 +162,13 @@ class DataObject(object):
         :param scenario: (str) the name of the scenario to load (together with `key` forms unique key.)
         :param raise_error: (bool) whether to raise an error or return None if the id
            is not found.
+        :param filters (dict) additional col/value filtering to perform to isolate row of interest
         :return: (tuple) of values in the order the columns are defined in the table
         :raises RowNotFound: if `id` is not present in `table`.
         """
         db = get_database()
-        tup = db.get_row_from_table(cls._table_name, cls._key_col, key, scenario=scenario, raise_error=raise_error)
+        tup = db.get_row_from_table(cls._table_name, cls._key_col, key,
+                                    scenario=scenario, raise_error=raise_error, **filters)
         return tup
 
     def check_scenario(self, scenario):

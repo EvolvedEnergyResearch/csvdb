@@ -34,7 +34,7 @@ The `CsvMetadata` constructor takes these args:
 * `df_cols` (list of str) Identifies columns to select to create a DataFrame from rows matching `key_col`.
 Defaults to the empty list.
 
-* `df_key_col` (str) A column to combine with `key_col` to identify timeseries data to store in a `DataFrame`.
+* `df_key_cols` (list of str) Columns to combine with `key_col` to identify timeseries data to store in a `DataFrame`.
 
 * `drop_cols` (list of str) Columns to ignore, i.e., metadata that is not processed by the application.
 Defaults to the empty list.

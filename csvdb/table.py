@@ -5,7 +5,7 @@ import pdb
 import re
 
 from .error import *
-from .utils import col_match
+from .utils import filter_query
 
 # This string is inserted into sensitivity columns when value == None,
 # to allow sensitivity to be used in dataframe indices.
@@ -40,13 +40,12 @@ class CsvTable(object):
         all_cols = self.get_columns()
 
         key_col    = md.key_col
-        df_key_col = md.df_key_col
         df_cols    = md.df_cols
         drop_cols  = md.drop_cols
+        # df_filters = md.df_filters
 
-        df_key_cols = [df_key_col] if df_key_col else []
         if not md.attr_cols:
-            non_attr_cols = df_cols + df_key_cols + drop_cols
+            non_attr_cols = df_cols + drop_cols # + df_filters
             md.attr_cols = attr_cols = [col for col in all_cols if col not in non_attr_cols]
 
         # verify that key col is included in the the attr cols
@@ -117,11 +116,12 @@ class CsvTable(object):
         df = self.data if df is None else df
         return SENSITIVITY_COL in df.columns
 
-    def get_row(self, key_col, key, scenario=None, allow_multiple=False, raise_error=False):
+    def get_row(self, key_col, key, scenario=None, allow_multiple=False, raise_error=False, **filters):
         """
         Get a tuple for the row with the given id in the table associated with this class.
         Expects to find exactly one row with the given id. The `key` and `scenario` together
-        must forms a unique key. User must instantiate the database before calling this method.
+        with any filters must form a unique key. User must instantiate the database before
+        calling this method.
 
         :param key_col: (str) the name of the column holding the key value
         :param key: (str) the unique id of a row in `table`
@@ -129,20 +129,21 @@ class CsvTable(object):
         :param allow_multiple: (bool) whether to allow multiple rows to be returned (else it's an error.)
         :param raise_error: (bool) whether to raise an error or return None if the
            {`key`, `scenario`} combination is not found in `table`.
+        :param filters: (dict) any addition colname/value pairs to use to isolate the row of interest
         :return: (tuple) of values in the order the columns are defined in the table
         :raises RowNotFound: if raise_error is True and the {`key`, `scenario`} combination
             is not present in `table`.
         """
         name = self.name
-        query = col_match(key_col, key)
-
-        if scenario and self.has_sensitivity_col():
-            query += ' and ' + col_match(SENSITIVITY_COL, scenario)
-
         if self.data is None:
             raise CsvdbException('No data has been loaded for table {}'.format(name))
 
-        rows = self.data.query(query)
+        filters[key_col] = key
+
+        if scenario and self.has_sensitivity_col():
+            filters[SENSITIVITY_COL] = scenario
+
+        rows = filter_query(self.data, filters)
         tups = [tuple(row) for idx, row in rows.iterrows()]
 
         count = len(tups)

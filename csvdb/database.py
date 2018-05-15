@@ -30,10 +30,11 @@ pd.set_option('display.width', 200)
 
 class CsvMetadata(object):
     __slots__ = ['table_name', 'data_table', 'key_col', 'attr_cols',
-                 'df_cols', 'df_value_col', 'df_key_col', 'drop_cols', 'lowcase_cols']
+                 'df_cols', 'df_value_col', 'df_filters', 'drop_cols', 'lowcase_cols']
 
     def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
-                 df_cols=None, df_value_col=None, df_key_col=None, drop_cols=None, lowcase_cols=None):
+                 df_cols=None, df_value_col=None, df_filters=None, drop_cols=None,
+                 lowcase_cols=None):
         """
         A simple struct to house table metadata. Attribute columns (`attr_cols`)
         become instance variables in generated classes. Dataframe columns (`df_cols`)
@@ -47,15 +48,15 @@ class CsvMetadata(object):
 
         if data_table:
             # ignore all other parameters, if any, to constructor
-            self.key_col = self.df_key_col = None
-            self.df_cols = self.attr_cols = self.drop_cols = []
+            self.key_col = None
+            self.df_filters = self.df_cols = self.attr_cols = self.drop_cols = []
         else:
-            self.key_col    = key_col or 'name'
-            self.df_key_col = df_key_col
-            self.df_cols    = df_cols or []
+            self.key_col      = key_col or 'name'
+            self.df_filters   = df_filters or []
+            self.df_cols      = df_cols or []
             self.df_value_col = df_value_col or 'value'
-            self.drop_cols  = drop_cols or []
-            self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
+            self.drop_cols    = drop_cols or []
+            self.attr_cols    = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
 
         key_col = self.key_col
         self.lowcase_cols = set((lowcase_cols or []) + ([key_col] if key_col else []))
@@ -202,9 +203,9 @@ class CsvDatabase(object):
         result = sorted(list(set(tables) - set(ignore)))
         return result
 
-    def get_row_from_table(self, name, key_col, key, scenario=None, raise_error=True):
+    def get_row_from_table(self, name, key_col, key, scenario=None, raise_error=True, **filters):
         tbl = self.get_table(name)
-        tup = tbl.get_row(key_col, key, scenario=scenario, raise_error=raise_error)
+        tup = tbl.get_row(key_col, key, scenario=scenario, raise_error=raise_error, **filters)
         return tup
 
     def get_rows_from_table(self, name, key_col, key, scenario=None, raise_error=True):

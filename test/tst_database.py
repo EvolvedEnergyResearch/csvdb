@@ -9,14 +9,21 @@ _Metadata = [
 
     CsvMetadata('TECH_MAIN'),  # all defaults apply
 
-    CsvMetadata('TECH_CAPITAL_COST',
+    CsvMetadata('NEW_TECH_CAPITAL_COST',
                 key_col='name',
-                df_key_col='cost_type',
+                df_filters=['cost_type', 'lifecycle'],
                 df_cols=['sensitivity', 'gau', 'vintage', 'value'],
                 drop_cols=['source', 'notes'],
                 lowcase_cols=['sensitivity']),
 
-CsvMetadata('TECH_CAPACITY_FACTOR',
+    CsvMetadata('TECH_CAPITAL_COST',
+                key_col='name',
+                df_filters=['cost_type'],
+                df_cols=['sensitivity', 'gau', 'vintage', 'value'],
+                drop_cols=['source', 'notes'],
+                lowcase_cols=['sensitivity']),
+
+    CsvMetadata('TECH_CAPACITY_FACTOR',
                 df_cols=['vintage', 'value', 'sensitivity'],
                 drop_cols=['source', 'notes']),
 
