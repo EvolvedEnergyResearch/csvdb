@@ -53,7 +53,7 @@ class CsvMetadata(object):
             self.key_col    = key_col or 'name'
             self.df_key_col = df_key_col
             self.df_cols    = df_cols or []
-            self.df_value_col = df_value_col or 'value'
+            self.df_value_col = df_value_col or ['value']
             self.drop_cols  = drop_cols or []
             self.attr_cols  = attr_cols or []   # if None, all cols minus (df_cols + drop_cols) are assumed
 
