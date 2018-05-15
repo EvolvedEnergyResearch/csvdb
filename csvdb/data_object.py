@@ -116,7 +116,7 @@ class DataObject(object):
             slice = matches
 
         timeseries = slice[md.df_cols]
-        timeseries = timeseries.set_index([c for c in md.df_cols if cnot inmd.df_value_col]).sort_index()
+        timeseries = timeseries.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
         timeseries = timeseries.astype(float)
         if 'gau' in timeseries.index.names:
             timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
