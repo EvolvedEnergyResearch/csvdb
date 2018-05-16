@@ -90,9 +90,8 @@ class DataObject(object):
         filters[md.key_col] = key
         matches = filter_query(df, filters)
 
-        # TODO: should this be an error?
         if len(matches) == 0:
-            print("""Warning: table '{}': no rows with '{} == "{}"'""".format(tbl_name, md.key_col, key))
+            print("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
             return None
 
         # Find the unique sets of attributes for which to create a DF
@@ -104,8 +103,7 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(
-                tbl_name, len(attrs)))
+            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
 
         if df_filters:
             df_keys = attrs[df_filters].iloc[0]
