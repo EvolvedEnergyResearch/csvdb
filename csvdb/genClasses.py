@@ -112,7 +112,7 @@ class ClassGenerator(object):
 
         template = """
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        ({names}) = tup
+        ({names},) = tup
 
         self.set_args(scenario, {args})
 

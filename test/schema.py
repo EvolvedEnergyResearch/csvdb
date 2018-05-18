@@ -53,7 +53,7 @@ class BlendCapitalCost(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, currency, currency_year, unit, geography, geography_map_key, interpolation_method,
-         extrapolation_method, extrapolation_growth_rate, recovery_factor, levelized) = tup
+         extrapolation_method, extrapolation_growth_rate, recovery_factor, levelized,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year,
                   extrapolation_growth_rate=extrapolation_growth_rate,
@@ -98,7 +98,7 @@ class BlendExistingStorage(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, unit, geography, geography_map_key, interpolation_method, extrapolation_method,
-         extrapolation_growth_rate) = tup
+         extrapolation_growth_rate,) = tup
 
         self.set_args(scenario, extrapolation_growth_rate=extrapolation_growth_rate,
                   extrapolation_method=extrapolation_method, geography=geography,
@@ -133,7 +133,7 @@ class BlendExoDemand(DataObject):
         self.year = year
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, unit, year, value) = tup
+        (name, unit, year, value,) = tup
 
         self.set_args(scenario, name=name, unit=unit, value=value, year=year)
 
@@ -163,7 +163,7 @@ class BlendFuelInputs(DataObject):
         self.name = name
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, fuel, limit) = tup
+        (name, fuel, limit,) = tup
 
         self.set_args(scenario, fuel=fuel, limit=limit, name=name)
 
@@ -195,7 +195,7 @@ class BlendMain(DataObject):
         self.name = name
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, enforce_storage_constraints, book_life, lifetime) = tup
+        (name, enforce_storage_constraints, book_life, lifetime,) = tup
 
         self.set_args(scenario, book_life=book_life, enforce_storage_constraints=enforce_storage_constraints,
                   lifetime=lifetime, name=name)
@@ -251,7 +251,7 @@ class ConversionCapitalCost(DataObject):
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, currency, currency_year, unit, time_unit, geography, geography_map_key,
          interpolation_method, extrapolation_method, extrapolation_growth_rate, recovery_factor,
-         levelized) = tup
+         levelized,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year,
                   extrapolation_growth_rate=extrapolation_growth_rate,
@@ -302,7 +302,7 @@ class ConversionEfficiency(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, input, input_unit, output_unit, geography, geography_map_key, interpolation_method,
-         extrapolation_method, extrapolation_growth_rate) = tup
+         extrapolation_method, extrapolation_growth_rate,) = tup
 
         self.set_args(scenario, extrapolation_growth_rate=extrapolation_growth_rate,
                   extrapolation_method=extrapolation_method, geography=geography,
@@ -362,7 +362,7 @@ class ConversionFixedOmAnn(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, currency, currency_year, unit, time_unit, geography, gau,
-         geography_map_key, interpolation_method, extrapolation_method, vintage, value) = tup
+         geography_map_key, interpolation_method, extrapolation_method, vintage, value,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
@@ -391,7 +391,7 @@ class ConversionMain(DataObject):
         self.name = name
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name) = tup
+        (name,) = tup
 
         self.set_args(scenario, name=name)
 
@@ -430,7 +430,7 @@ class ConversionRps(DataObject):
         self.year = year
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, type, geography, gau, geography_map_key, year, value) = tup
+        (name, type, geography, gau, geography_map_key, year, value,) = tup
 
         self.set_args(scenario, gau=gau, geography=geography, geography_map_key=geography_map_key, name=name, type=type,
                   value=value, year=year)
@@ -486,7 +486,7 @@ class ConversionVariableOm(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
-         interpolation_method, extrapolation_method, vintage, value) = tup
+         interpolation_method, extrapolation_method, vintage, value,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
@@ -552,7 +552,7 @@ class ExistingMain(DataObject):
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, technology_type, generator, shape, geography, gau, unit, ramp_rate,
          ramp_rate_time_unit, generation_p_min, generation_p_max, load_p_min, load_p_max,
-         capacity, operating_year, retirement_year) = tup
+         capacity, operating_year, retirement_year,) = tup
 
         self.set_args(scenario, capacity=capacity, gau=gau, generation_p_max=generation_p_max,
                   generation_p_min=generation_p_min, generator=generator, geography=geography,
@@ -611,13 +611,39 @@ class NewTechCapitalCost(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, currency, currency_year, cost_type, lifecycle, unit, time_unit, geography,
-         geography_map_key, interpolation_method, extrapolation_method, recovery_factor, levelized) = tup
+         geography_map_key, interpolation_method, extrapolation_method, recovery_factor, levelized,) = tup
 
         self.set_args(scenario, cost_type=cost_type, currency=currency, currency_year=currency_year,
                   extrapolation_method=extrapolation_method, geography=geography,
                   geography_map_key=geography_map_key, interpolation_method=interpolation_method,
                   levelized=levelized, lifecycle=lifecycle, name=name, recovery_factor=recovery_factor,
                   time_unit=time_unit, unit=unit)
+
+class OneCol(DataObject):
+    _instances_by_key = {}
+    _table_name = "ONE_COL"
+    _key_col = "name"
+    _cols = ["name"]
+    _df_cols = []
+    _df_filters = []
+    _data_table_name = None
+
+    def __init__(self, name, scenario):
+        DataObject.__init__(self, name, scenario)
+
+        OneCol._instances_by_key[self._key] = self
+
+        self.name = None
+
+    def set_args(self, scenario, name=None):
+        self.check_scenario(scenario)
+
+        self.name = name
+
+    def init_from_tuple(self, tup, scenario, **kwargs):    
+        (name,) = tup
+
+        self.set_args(scenario, name=name)
 
 class ProductCost(DataObject):
     _instances_by_key = {}
@@ -667,7 +693,7 @@ class ProductCost(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, geography, gau, geography_map_key, interpolation_method, extrapolation_method,
-         exponential_growth_rate, currency, currency_year, unit, year, value) = tup
+         exponential_growth_rate, currency, currency_year, unit, year, value,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year,
                   exponential_growth_rate=exponential_growth_rate,
@@ -723,7 +749,7 @@ class ProductEmissions(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, geography, gau, interpolation_method, extrapolation_method,
-         extrapolation_growth_rate, mass_unit, energy_unit, year, value) = tup
+         extrapolation_growth_rate, mass_unit, energy_unit, year, value,) = tup
 
         self.set_args(scenario, energy_unit=energy_unit, extrapolation_growth_rate=extrapolation_growth_rate,
                   extrapolation_method=extrapolation_method, gau=gau, geography=geography,
@@ -752,7 +778,7 @@ class ProductMain(DataObject):
         self.name = name
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name) = tup
+        (name,) = tup
 
         self.set_args(scenario, name=name)
 
@@ -797,7 +823,7 @@ class ProductPotential(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, unit, interpolation_method, extrapolation_method,
-         extrapolation_growth_rate, year, value) = tup
+         extrapolation_growth_rate, year, value,) = tup
 
         self.set_args(scenario, extrapolation_growth_rate=extrapolation_growth_rate,
                   extrapolation_method=extrapolation_method, interpolation_method=interpolation_method,
@@ -844,7 +870,7 @@ class ProductRps(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, geography, gau, geography_map_key, interpolation_method, extrapolation_method,
-         exponential_growth_rate, year, value) = tup
+         exponential_growth_rate, year, value,) = tup
 
         self.set_args(scenario, exponential_growth_rate=exponential_growth_rate,
                   extrapolation_method=extrapolation_method, gau=gau, geography=geography,
@@ -885,7 +911,7 @@ class TechCapacityFactor(DataObject):
         self.name = name
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, geography, gau, geography_map_key, interpolation_method, extrapolation_method) = tup
+        (name, geography, gau, geography_map_key, interpolation_method, extrapolation_method,) = tup
 
         self.set_args(scenario, extrapolation_method=extrapolation_method, gau=gau, geography=geography,
                   geography_map_key=geography_map_key, interpolation_method=interpolation_method, name=name)
@@ -939,7 +965,7 @@ class TechCapitalCost(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, currency, currency_year, cost_type, unit, time_unit, geography, geography_map_key,
-         interpolation_method, extrapolation_method, recovery_factor, levelized) = tup
+         interpolation_method, extrapolation_method, recovery_factor, levelized,) = tup
 
         self.set_args(scenario, cost_type=cost_type, currency=currency, currency_year=currency_year,
                   extrapolation_method=extrapolation_method, geography=geography,
@@ -982,7 +1008,7 @@ class TechCurtailmentCost(DataObject):
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, vintage, value, sensitivity) = tup
+        (name, currency, currency_year, unit, vintage, value, sensitivity,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, sensitivity=sensitivity,
                   unit=unit, value=value, vintage=vintage)
@@ -1025,7 +1051,7 @@ class TechEfficiency(DataObject):
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, unit_in, unit_out, blend_in, blend_out, vintage, max_load_value, min_load_value) = tup
+        (name, unit_in, unit_out, blend_in, blend_out, vintage, max_load_value, min_load_value,) = tup
 
         self.set_args(scenario, blend_in=blend_in, blend_out=blend_out, max_load_value=max_load_value,
                   min_load_value=min_load_value, name=name, unit_in=unit_in, unit_out=unit_out,
@@ -1082,7 +1108,7 @@ class TechFixedOm(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
-         interpolation_method, extrapolation_method, vintage, value) = tup
+         interpolation_method, extrapolation_method, vintage, value,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,
@@ -1127,7 +1153,7 @@ class TechItc(DataObject):
         self.vintage = vintage
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, input_type, vintage, value, sensitivity) = tup
+        (name, currency, currency_year, unit, input_type, vintage, value, sensitivity,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, input_type=input_type, name=name,
                   sensitivity=sensitivity, unit=unit, value=value, vintage=vintage)
@@ -1210,7 +1236,7 @@ class TechMain(DataObject):
         (name, potential_group, type, zone, construction_time, lifetime, book_life, DSCR,
          MACRS_term, ownership_model, ramp_rate, ramp_rate_time_unit, typical_unit_size,
          generation_p_min, generation_p_max, load_p_min, load_p_max, bleed_rate, max_duration,
-         bleed_rate_time_unit, ancillary_service_eligible, curtailable, shape) = tup
+         bleed_rate_time_unit, ancillary_service_eligible, curtailable, shape,) = tup
 
         self.set_args(scenario, DSCR=DSCR, MACRS_term=MACRS_term, ancillary_service_eligible=ancillary_service_eligible,
                   bleed_rate=bleed_rate, bleed_rate_time_unit=bleed_rate_time_unit, book_life=book_life,
@@ -1280,7 +1306,7 @@ class TechPotential(DataObject):
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, type, incremental_to_existing, source, notes, unit, time_unit, geography, gau,
          geography_map_key, interpolation_method, extrapolation_method, extrapolation_growth_rate,
-         year, value, sensitivity) = tup
+         year, value, sensitivity,) = tup
 
         self.set_args(scenario, extrapolation_growth_rate=extrapolation_growth_rate,
                   extrapolation_method=extrapolation_method, gau=gau, geography=geography,
@@ -1326,7 +1352,7 @@ class TechPtc(DataObject):
         self.year = year
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, vintage, year, value, sensitivity) = tup
+        (name, currency, currency_year, unit, vintage, year, value, sensitivity,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, sensitivity=sensitivity,
                   unit=unit, value=value, vintage=vintage, year=year)
@@ -1394,7 +1420,7 @@ class TechRetirementCost(DataObject):
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, currency, currency_year, cost_type, unit, time_unit, geography, gau,
          geography_map_key, interpolation_method, extrapolation_method, recovery_factor,
-         levelized, vintage, value, sensitivity) = tup
+         levelized, vintage, value, sensitivity,) = tup
 
         self.set_args(scenario, cost_type=cost_type, currency=currency, currency_year=currency_year,
                   extrapolation_method=extrapolation_method, gau=gau, geography=geography,
@@ -1435,7 +1461,7 @@ class TechRps(DataObject):
         self.year = year
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, load_modifier, vintage, year, RPS, sensitivity) = tup
+        (name, load_modifier, vintage, year, RPS, sensitivity,) = tup
 
         self.set_args(scenario, RPS=RPS, load_modifier=load_modifier, name=name, sensitivity=sensitivity, vintage=vintage,
                   year=year)
@@ -1488,7 +1514,7 @@ class TechSchedule(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, type, unit, time_unit, geography, gau, geography_map_key, interpolation_method,
-         extrapolation_method, year, value, sensitivity) = tup
+         extrapolation_method, year, value, sensitivity,) = tup
 
         self.set_args(scenario, extrapolation_method=extrapolation_method, gau=gau, geography=geography,
                   geography_map_key=geography_map_key, interpolation_method=interpolation_method,
@@ -1530,7 +1556,7 @@ class TechShutdownCost(DataObject):
         self.value = value
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, source, notes, currency, currency_year, unit, value) = tup
+        (name, source, notes, currency, currency_year, unit, value,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, notes=notes, source=source,
                   unit=unit, value=value)
@@ -1567,7 +1593,7 @@ class TechStartupCost(DataObject):
         self.value = value
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
-        (name, currency, currency_year, unit, value, sensitivity) = tup
+        (name, currency, currency_year, unit, value, sensitivity,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, name=name, sensitivity=sensitivity,
                   unit=unit, value=value)
@@ -1625,7 +1651,7 @@ class TechVariableOm(DataObject):
 
     def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, source, notes, currency, currency_year, unit, geography, gau, geography_map_key,
-         interpolation_method, extrapolation_method, vintage, value, sensitivity) = tup
+         interpolation_method, extrapolation_method, vintage, value, sensitivity,) = tup
 
         self.set_args(scenario, currency=currency, currency_year=currency_year, extrapolation_method=extrapolation_method,
                   gau=gau, geography=geography, geography_map_key=geography_map_key,

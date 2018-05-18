@@ -1,6 +1,8 @@
 from csvdb import CsvMetadata, CsvDatabase
 
 _Metadata = [
+    CsvMetadata('ONE_COL'),
+
     CsvMetadata('GeographiesSpatialJoin',
                 data_table=True),
 
