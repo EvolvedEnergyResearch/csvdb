@@ -21,7 +21,7 @@ from glob import glob
 import gzip
 import os
 import pandas as pd
-
+import pdb
 from .error import CsvdbException
 from .table import CsvTable
 
@@ -107,7 +107,7 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None,
                  # Deprecated: given explicit metadata, can probably drop these arguments
-                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None):
+                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,output_tables=False):
         """
         Initialize a CsvDatabase.
 
@@ -122,10 +122,10 @@ class CsvDatabase(object):
         :param data_tables: (list of str) names of tables that should be treated as "data" tables.
         """
         self.pathname = pathname
+        self.output_tables = output_tables
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
-
         self.table_objs  = {}        # dict of table instances keyed by name
         self.table_names = {}        # all known table names
         self.text_maps   = {}        # dict by table name of dicts by id of text mapping tables
@@ -184,10 +184,9 @@ class CsvDatabase(object):
     def get_table(self, name):
         try:
             return self.table_objs[name]
-
         except KeyError:
             metadata = self.metadata.get(name, CsvMetadata(name))
-            tbl = CsvTable(self, name, metadata)
+            tbl = CsvTable(self, name, metadata,self.output_tables)
             self.table_objs[name] = tbl
             return tbl
 
@@ -268,7 +267,7 @@ class CsvDatabase(object):
 
             for filename in filenames:
                 basename = os.path.basename(filename)
-                if (basename.endswith('.csv') or basename.endswith('.gz')):
+                if (basename.endswith('.csv') or basename.endswith('.CSV')  or basename.endswith('.gz') or basename.endswith('.GZ')):
                     tbl_name = basename.split('.')[0]
                     self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 

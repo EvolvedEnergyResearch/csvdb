@@ -22,10 +22,11 @@ def clean_col_name(name):
 
 
 class CsvTable(object):
-    def __init__(self, db, tbl_name, metadata):
+    def __init__(self, db, tbl_name, metadata,output_table):
         self.db = db
         self.name = tbl_name
         self.metadata = metadata
+        self.output_table = output_table
         self.data = None
 
         self.data_class = None
@@ -50,14 +51,25 @@ class CsvTable(object):
 
         # verify that key col is included in the the attr cols
         if key_col not in attr_cols:
-            raise Exception("Table {}: key_col '{}' is not present in attr_cols {}".format(
-                tbl_name, key_col, sorted(attr_cols)))
+            raise Exception("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
 
         # verify that all specified cols are present
         specified_cols = set(attr_cols + non_attr_cols)
         missing = specified_cols - set(all_cols)
         if missing:
             raise Exception("Table {}: cols {} are not present in table".format(tbl_name, sorted(missing)))
+
+    def _compute_output_metadata(self):
+        md = self.metadata
+        if md.data_table:
+            return
+        tbl_name = self.name
+        all_cols = self.get_columns()
+        md.key_col = None
+        md.df_value_col = ['value']
+        md.df_cols = all_cols
+        md.drop_cols = None
+        md.attr_cols = attr_cols = [col for col in all_cols if col not in md.df_value_col]
 
 
     def __str__(self):
@@ -80,8 +92,10 @@ class CsvTable(object):
 
         # drop leading or trailing blanks from column names
         df.columns = map(str.strip, df.columns)
-
-        self._compute_metadata()
+        if self.output_table:
+            self._compute_output_metadata()
+        else:
+            self._compute_metadata()
         md = self.metadata
         col = md.key_col
 
@@ -103,13 +117,19 @@ class CsvTable(object):
             s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
 
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
+        if self.output_table:
+            df = df.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
         self.data = df = df.where(pd.notnull(df), other=None)
 
-        for col in md.lowcase_cols:
-            df[col] = df[col].str.lower()
+        if self.output_table:
+            pass
+        else:
+            for col in md.lowcase_cols:
+                df[col] = df[col].str.lower()
 
         rows, cols = df.shape
         print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
+
 
 
     def has_sensitivity_col(self, df=None):

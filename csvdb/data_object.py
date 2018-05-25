@@ -103,6 +103,7 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
+            pdb.set_trace()
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
 
         if df_filters:
@@ -115,7 +116,11 @@ class DataObject(object):
 
         timeseries = slice[md.df_cols]
         timeseries = timeseries.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
-        timeseries = timeseries.astype(float)
+        #todo improve this try/except
+        try:
+            timeseries = timeseries.astype(float)
+        except:
+            pass
         if 'gau' in timeseries.index.names:
             timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
         self._timeseries = timeseries.copy(deep=True)
