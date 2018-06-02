@@ -79,9 +79,8 @@ class ShapeDataMgr(object):
 
         # ShapeData is stored in gzipped slices of original 3.5 GB table.
         # The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
-        shape_files = glob(os.path.join(self.db_path, self.tbl_name, '*.csv.gz'))
-
-        for filename in shape_files:
+        shape_files_zip = glob(os.path.join(self.db_path, self.tbl_name, '*.csv.gz'))
+        for filename in shape_files_zip:
             basename = os.path.basename(filename)
             shape_name = basename.split('.')[0]
 
@@ -89,6 +88,13 @@ class ShapeDataMgr(object):
                 print("Reading shape data for {}".format(shape_name))
                 df = pd.read_csv(f, index_col=None)
                 self.slices[shape_name] = df
+
+        shape_files_csv = glob(os.path.join(self.db_path, self.tbl_name, '*.csv'))
+        for filename in shape_files_csv:
+            basename = os.path.basename(filename)
+            shape_name = basename.split('.')[0]
+            df = pd.read_csv(filename, index_col=None)
+            self.slices[shape_name] = df
 
     def get_slice(self, name):
         if not self.slices:
