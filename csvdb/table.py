@@ -125,7 +125,8 @@ class CsvTable(object):
             pass
         else:
             for col in md.lowcase_cols:
-                df[col] = df[col].str.lower()
+                pass
+                #df[col] = df[col].str.lower()
 
         rows, cols = df.shape
         print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))

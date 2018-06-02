@@ -80,8 +80,6 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
-        if tbl_name == 'NEW_TECH_CAPITAL_COST':
-            pass
 
         df = tbl.data
         df_filters = md.df_filters
@@ -103,7 +101,6 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            pdb.set_trace()
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
 
         if df_filters:
@@ -137,17 +134,21 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        key = key.lower()
+        #key = key.lower()
 
         if md.df_cols:
             tup = self.load_timeseries(key, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
             cols = tbl.get_columns()
-
+            if 'reference_name' in cols:
+                locate = cols.index('reference_name')
+                reference_name = tup[locate]
+                if reference_name is not None:
+                    key = reference_name
+                    tup = self.__class__.get_row(key, scenario=scenario, **filters)
             if tup is None:
                 tup = [None] * len(cols)
-
             # filter out the non-attribute columns
             tup = [t for t, c in zip(tup, cols) if c in md.attr_cols]
 
