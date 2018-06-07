@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import click
+from glob import glob
 import os
 import types
 
@@ -88,7 +89,7 @@ def read_metadata(db):
 
             target_col = items.pop(0)   # may be just a column name or table.column
 
-            if len(items) == 1:     # either a type or a table.column reference
+            if len(items) == 1:     # must be a type, a 'table.column' reference, or a 'directory/'
                 value = items[0]
                 aType = value.lower()
 
@@ -123,11 +124,30 @@ def read_metadata(db):
                         values.append(None)
 
                     save_values(num, target_col, values)
+
+                # Compare column values to files in this directory
+                elif value.endswith('/'):
+                    pattern = os.path.join(db.pathname, value, '*')
+                    paths = glob(pattern)
+                    values = map(extract_name, paths)
+
+                    save_values(num, target_col, values)
             else:
                 save_values(num, target_col, items)
 
     return value_dict
 
+def extract_name(path):
+    '''
+    From, say, '/database/ShapeData/pv_utility_2-axis.csv.gz', return the
+    basename of the file up to the first '.', i.e., 'pv_utility_2-axis'
+
+    :param path: (str) a pathname
+    :return: (str) return the basename of the path up to the first '.', if any.
+    '''
+    basename = os.path.basename(path)
+    parts = basename.split('.')
+    return parts[0]
 
 def check_tables(db, col_md):
     for tblname in db.file_map.keys():

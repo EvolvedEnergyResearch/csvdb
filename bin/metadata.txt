@@ -32,8 +32,11 @@ is_active,bool
 must_run,bool
 interpolation_method,linear_interpolation,linear_regression,logistic,nearest,quadratic,cubic,none,decay_towards_linear_regression,average,exponential_regression,exponential_interpolation
 extrapolation_method,linear_interpolation,linear_regression,logistic,nearest,quadratic,cubic,none,decay_towards_linear_regression,average,exponential_regression,exponential_interpolation
-# TBD: what to do with this?
-# ShapeData(folder),SHAPE_META.name
+
+# if there's one value and it ends in '/', it's a directory; the basenames of the files
+# there (up to first '.') are the validation values
+SHAPE_META.name,ShapeData/
+
 day_type,workday,non-workday
 month,1,2,3,4,5,6,7,8,9,10,11,12
 hour,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
