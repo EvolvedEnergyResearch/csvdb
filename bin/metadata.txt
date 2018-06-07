@@ -22,6 +22,9 @@ value,float
 geography,GEOGRAPHIES.geography
 gau,GEOGRAPHIES.gau
 
+CONVERSION_RPS.type,supply,demand
+NEW_TECH_MAIN.type,storage,thermal,fixed
+
 currency,CURRENCY_CONVERSION.currency
 currency_year,CURRENCY_CONVERSION.year
 shape,SHAPE_META.name

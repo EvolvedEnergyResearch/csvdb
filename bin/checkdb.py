@@ -86,7 +86,7 @@ def read_metadata(db):
             if len(items) < 2:
                 raise MetaDataError(filename, num, "expected at least 2 items, got '{}'".format(line))
 
-            target_col = items.pop(0)
+            target_col = items.pop(0)   # may be just a column name or table.column
 
             if len(items) == 1:     # either a type or a table.column reference
                 value = items[0]
@@ -129,6 +129,47 @@ def read_metadata(db):
     return value_dict
 
 
+def check_tables(db, col_md):
+    for tblname in db.file_map.keys():
+
+        if tblname == 'GEOGRAPHIES':        # TODO: same for all identified data tables?
+            continue
+
+        tbl = db.get_table(tblname)
+        data = tbl.data
+
+        colnames = map(str.strip, data.columns)
+        if colnames != list(data.columns):
+            print("WARNING: Table {} has columns with surrounding blanks".format(tblname))
+
+        if '' in colnames:
+            print("WARNING: Table {} has a blank column name".format(tblname))
+
+        if len(data) == 0:
+            print("Skipping empty table", tblname)
+            continue
+
+        for colname in data.columns:
+
+            # If TABLE.COLUMN is found, prefer that over generic column spec
+            fullname = tblname + '.' + colname
+            validation = col_md.get(fullname) or col_md.get(colname)
+
+            if validation:
+                series = data[colname]
+
+                if isinstance(validation, list):
+                    errors = check_value_list(series, validation)
+
+                else: # it's a validation function
+                    errors = validation(series)
+
+                if errors:
+                    print("Errors in {}.{}:".format(tblname, colname))
+                    for i, value in errors:
+                        print("    unknown value '{}' at line {}".format(value, i+2))   # +1 for header; +1 to translate 0 offset
+
+
 _DbMetadata = [
     CsvMetadata('GEOGRAPHIES', data_table=True),
     CsvMetadata('GEOGRAPHIES_SPATIAL_JOIN', data_table=True),
@@ -156,41 +197,7 @@ def main(dbdir, shapes):
         print(e)
         return
 
-    for tblname in db.file_map.keys():
-
-        if tblname == 'GEOGRAPHIES':        # TODO: same for all identified data tables?
-            continue
-
-        tbl = db.get_table(tblname)
-        data = tbl.data
-
-        colnames = map(str.strip, data.columns)
-        if colnames != list(data.columns):
-            print("WARNING: Table {} has columns with surrounding blanks".format(tblname))
-
-        if '' in colnames:
-            print("WARNING: Table {} has a blank column name".format(tblname))
-
-        if len(data) == 0:
-            print("Skipping empty table", tblname)
-            continue
-
-        for colname in data.columns:
-            validation = col_md.get(colname)
-            if validation:
-                series = data[colname]
-
-                if isinstance(validation, list):
-                    errors = check_value_list(series, validation)
-
-                else: # it's a validation function
-                    errors = validation(series)
-
-                if errors:
-                    print("Errors in {}.{}:".format(tblname, colname))
-                    for i, value in errors:
-                        print("    unknown value '{}' at line {}".format(value, i+2))   # +1 for header; +1 to translate 0 offset
-
+    check_tables(db, col_md)
 
 if __name__ == '__main__':
     main()
