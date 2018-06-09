@@ -13,6 +13,7 @@ REF_SCENARIO = '_reference_'
 
 SENSITIVITY_COL = 'sensitivity'
 
+Verbose = False
 
 _bad_chars = re.compile('[\.:\ ]+')
 
@@ -129,7 +130,8 @@ class CsvTable(object):
                 #df[col] = df[col].str.lower()
 
         rows, cols = df.shape
-        print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
+        if Verbose:
+            print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
 
 
 

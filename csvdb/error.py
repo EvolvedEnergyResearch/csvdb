@@ -43,3 +43,8 @@ class SubclassProtocolError(CsvdbException):
     def __init__(self, cls, method):
         msg = 'Class "{}" fails to implement method "{}"'.format(cls.__name__, method)
         super(SubclassProtocolError, self).__init__(msg)
+
+class ValidationDataError(Exception):
+    def __init__(self, path, linenum, msg):
+        msg = "Syntax error in {} at line {}: {}".format(path, linenum+1, msg)
+        super(ValidationDataError, self).__init__(msg)
