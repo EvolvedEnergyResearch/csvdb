@@ -42,22 +42,22 @@ month,1,2,3,4,5,6,7,8,9,10,11,12
 hour,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
 
 # Need col names for these
-AgeGrowthOrDecayType,linear,exponential
-Currencies,AUD,BGN,BRL,CAD,CHF,CNY,CYP,CZK,DKK,EEK,EUR,GBP,HKD,HRK,HUF,IDR,ILS,INR,ISK,JPY,KRW,LTL,LVL,MTL,MXN,MYR,NOK,NZD,PHP,PLN,ROL,RON,RUB,SEK,SGD,SIT,SKK,THB,TRL,TRY,USD,ZAR
-Definitions,absolute,relative
-DemandStockUnitTypes,equipment,service demand,capacity factor
-DemandTechEfficiencyTypes,absolute,normal
-DemandTechUnitTypes,equipment,service demand
-DispatchConstraintTypes,energy_budget,p_min,p_max
-DispatchFeeders,residential,commercial,productive
-DispatchWindows,day,week,month,year
-EfficiencyTypes,consumed,not consumed,leaked
-FlexibleLoadShiftTypes,delayed,native,advance
-GeographyMapKeys,GEOGRAPHY_MAP_KEYS.name
-GreenhouseGasEmissionsType,physical,accounting
-InputTypes,total,intensity
-ShapesTypes,weather date,time slice
-ShapesUnits,energy,power
-StockDecayFunctions,weibull,linear,lump
-SupplyCostTypes,revenue requirement,tariff,investment
-SupplyTypes,blend,conversion,delivery,import,primary,storage
+#AgeGrowthOrDecayType,linear,exponential
+#Currencies,AUD,BGN,BRL,CAD,CHF,CNY,CYP,CZK,DKK,EEK,EUR,GBP,HKD,HRK,HUF,IDR,ILS,INR,ISK,JPY,KRW,LTL,LVL,MTL,MXN,MYR,NOK,NZD,PHP,PLN,ROL,RON,RUB,SEK,SGD,SIT,SKK,THB,TRL,TRY,USD,ZAR
+#Definitions,absolute,relative
+#DemandStockUnitTypes,equipment,service demand,capacity factor
+#DemandTechEfficiencyTypes,absolute,normal
+#DemandTechUnitTypes,equipment,service demand
+#DispatchConstraintTypes,energy_budget,p_min,p_max
+#DispatchFeeders,residential,commercial,productive
+#DispatchWindows,day,week,month,year
+#EfficiencyTypes,consumed,not consumed,leaked
+#FlexibleLoadShiftTypes,delayed,native,advance
+#GeographyMapKeys,GEOGRAPHY_MAP_KEYS.name
+#GreenhouseGasEmissionsType,physical,accounting
+#InputTypes,total,intensity
+#ShapesTypes,weather date,time slice
+#ShapesUnits,energy,power
+#StockDecayFunctions,weibull,linear,lump
+#SupplyCostTypes,revenue requirement,tariff,investment
+#SupplyTypes,blend,conversion,delivery,import,primary,storage

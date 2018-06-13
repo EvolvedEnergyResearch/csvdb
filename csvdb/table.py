@@ -40,6 +40,9 @@ class CsvTable(object):
         tbl_name = self.name
         all_cols = self.get_columns()
 
+        if tbl_name == 'csp_10hr_storage':
+            pass
+
         key_col    = md.key_col
         df_cols    = md.df_cols
         drop_cols  = md.drop_cols
@@ -79,6 +82,7 @@ class CsvTable(object):
         with openFunc(filename, 'rb') as f:
             self.data = df = pd.read_csv(f, index_col=None)
 
+        # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
         df.columns = map(str.strip, df.columns)
 
