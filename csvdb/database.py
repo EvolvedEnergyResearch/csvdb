@@ -39,7 +39,7 @@ class CsvMetadata(object):
         A simple struct to house table metadata. Attribute columns (`attr_cols`)
         become instance variables in generated classes. Dataframe columns (`df_cols`)
         for rows matching `key_cols` (which must be a subset of `attr_cols`) are
-        stored in a dataframes linked from an instance of the generated class.
+        stored in a DataFrames linked from an instance of the generated class.
         Defaults: `key_col` = 'name'; `attr_cols` = all columns not specified in
         `df_cols` or `drop_cols`; df_cols = []; `drop_cols` = [].
         """
@@ -49,7 +49,8 @@ class CsvMetadata(object):
         if data_table:
             # ignore all other parameters, if any, to constructor
             self.key_col = None
-            self.df_filters = self.df_cols = self.attr_cols = self.drop_cols = []
+            self.df_filters = self.df_cols = self.attr_cols = self.drop_cols = self.lowcase_cols = []
+            self.df_value_col = []
         else:
             self.key_col      = key_col or 'name'
             self.df_filters   = df_filters or []
@@ -69,32 +70,40 @@ class ShapeDataMgr(object):
     """
     def __init__(self, db_path):
         self.db_path = db_path
-        self.tbl_name = SHAPE_DIR
-        self.slices = {}        # maps shape name to DF containing that shape's data rows
-        self.file_map = {}
+        self.tbl_name = SHAPE_DIR   # Deprecated?
+        self.slices = {}            # maps shape name to DF containing that shape's data rows
+        self.file_map = self.create_filemap(db_path)
 
     def load_all(self):
         if self.slices:
             return self.slices
 
-        # ShapeData is stored in gzipped slices of original 3.5 GB table.
-        # The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
-        shape_files_zip = glob(os.path.join(self.db_path, self.tbl_name, '*.csv.gz'))
-        for filename in shape_files_zip:
-            basename = os.path.basename(filename)
-            shape_name = basename.split('.')[0]
-
-            with gzip.open(filename, 'rb') as f:
+        for shape_name, filename in self.file_map.iteritems():
+            openFunc = gzip.open if filename.endswith('.gz') else open
+            with openFunc(filename, 'rb') as f:
                 print("Reading shape data for {}".format(shape_name))
                 df = pd.read_csv(f, index_col=None)
                 self.slices[shape_name] = df
 
-        shape_files_csv = glob(os.path.join(self.db_path, self.tbl_name, '*.csv'))
-        for filename in shape_files_csv:
+    @classmethod
+    def create_filemap(cls, db_path):
+        """
+        ShapeData is stored in gzipped slices of original 3.5 GB table.
+        The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
+        This is a classmethod so it can be called by clean.py to generate
+        CsvMetadata instances before creating the CsvDatabase.
+        """
+        shape_dir = os.path.join(db_path, SHAPE_DIR)
+        shape_files_zip = glob(os.path.join(shape_dir, '*.csv.gz'))
+        shape_files_csv = glob(os.path.join(shape_dir, '*.csv'))
+
+        file_map = {}
+        for filename in shape_files_zip + shape_files_csv:
             basename = os.path.basename(filename)
             shape_name = basename.split('.')[0]
-            df = pd.read_csv(filename, index_col=None)
-            self.slices[shape_name] = df
+            file_map[shape_name] = filename
+
+        return file_map
 
     def get_slice(self, name):
         if not self.slices:
@@ -102,7 +111,6 @@ class ShapeDataMgr(object):
 
         name = name.replace(' ', '_')
         return self.slices[name]
-
 
 class CsvDatabase(object):
     """
@@ -248,16 +256,6 @@ class CsvDatabase(object):
         md = self.table_metadata(table_name)
         return md.key_col
 
-    # def _cache_foreign_keys(self):
-    #     """
-    #     The CSV database reads the foreign key data that was exported from postgres.
-    #     """
-    #     pathname = self.file_for_table('foreign_keys')
-    #     df = pd.read_csv(pathname, index_col=None)
-    #     for _, row in df.iterrows():
-    #         tbl_name, col_name, for_tbl_name, for_col_name = tuple(row)
-    #         ForeignKey(tbl_name, col_name, for_tbl_name, for_col_name)
-
     def create_file_map(self):
         pathname = self.pathname
 
@@ -281,4 +279,4 @@ class CsvDatabase(object):
 
 
     def file_for_table(self, tbl_name):
-        return self.file_map.get(tbl_name)
+        return self.file_map.get(tbl_name) or self.shapes.file_map.get(tbl_name)
