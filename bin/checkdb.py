@@ -15,13 +15,13 @@ _DbMetadata = [CsvMetadata(name, data_table=True) for name in _DataTables]
               help='Force a check of all database files. Default file modification' 
               ' times and time of last check to determine what needs further checking.')
 
-@click.option('--update/--no-update', default=True,
+@click.option('--update/--no-update', default=False,
               help='Whether to write changed data back to the CSV files. Default is True (update).')
 
 @click.option('--shapes/--no-shapes', default=False,
               help='Check the Shapes data. Default is to skip this check.')
 
-def main(dbdir, update, shapes, force):
+def main(dbdir, force, update, shapes):
     try:
         validate_db(dbdir, update, shapes, force, metadata=_DbMetadata)
     except ValidationDataError as e:

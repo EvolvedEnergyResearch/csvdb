@@ -8,6 +8,7 @@ import types
 import re
 from .database import CsvDatabase, CsvMetadata, ShapeDataMgr
 from .error import CsvdbException, ValidationDataError
+import pdb
 
 VALIDATION_FILE = 'validation.txt'
 TIMESTAMP_FILE  = 'last_clean'
@@ -244,7 +245,8 @@ def update_timestamp(db, remove=False):
     '''
     timestamp_path = os.path.join(db.pathname, TIMESTAMP_FILE)
     if remove:
-        os.remove(timestamp_path)
+        if os.path.exists(timestamp_path):
+            os.remove(timestamp_path)
     else:
         open(timestamp_path, 'w').close()
 
@@ -329,12 +331,13 @@ def clean_tables(db, update, skip_dirs=None):
 
             if count:
                 print("Modified {} unique values in {}.{}".format(count, tblname, colname))
+                modified = True
 
         if update and modified:
             pathname = db.file_for_table(tblname)
             print("Writing", pathname)
             openFunc = gzip.open if pathname.endswith('.gz') else open
-            with openFunc(pathname) as f:
+            with openFunc(pathname, 'wb') as f:
                 data.to_csv(f, index=False)
 
     if update:
@@ -358,7 +361,7 @@ def validate_db(dbdir, update, shapes, force, metadata=None):
     if shapes:
         db.shapes.load_all()
 
-    clean_tables(db, update)
+    clean_tables(db, update, skip_dirs='ShapeData' if shapes is False else None)
 
     good = check_tables(db, col_md, shapes)
     message = "Database is clean" if good else "Database contains data errors"
