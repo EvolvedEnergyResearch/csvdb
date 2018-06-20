@@ -80,10 +80,7 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
-
         df = tbl.data
-        df_filters = md.df_filters
-
         # Process key match as another filter
         filters[md.key_col] = key
         matches = filter_query(df, filters)
@@ -93,9 +90,7 @@ class DataObject(object):
             return None
 
         # Find the unique sets of attributes for which to create a DF
-        attr_cols = md.attr_cols
-        cols = attr_cols + [col for col in df_filters if col not in attr_cols]
-        attrs = matches[cols]
+        attrs = matches[md.attr_cols]
 
         if len(attrs) > 1:
             attrs = attrs.drop_duplicates()
@@ -103,15 +98,7 @@ class DataObject(object):
         if len(attrs) > 1:
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
 
-        if df_filters:
-            df_keys = attrs[df_filters].iloc[0]
-            conds = [col_match(attr, value) for attr, value in zip(df_filters, df_keys)]
-            query = ' and '.join(conds)
-            slice = matches.query(query)
-        else:
-            slice = matches
-
-        timeseries = slice[md.df_cols]
+        timeseries = matches[md.df_cols]
         timeseries = timeseries.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
         #todo improve this try/except
         try:

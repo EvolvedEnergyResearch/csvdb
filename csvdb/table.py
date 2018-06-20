@@ -23,11 +23,12 @@ def clean_col_name(name):
 
 
 class CsvTable(object):
-    def __init__(self, db, tbl_name, metadata,output_table):
+    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities):
         self.db = db
         self.name = tbl_name
         self.metadata = metadata
         self.output_table = output_table
+        self.compile_sensitivities = compile_sensitivities
         self.data = None
 
         self.data_class = None
@@ -41,16 +42,12 @@ class CsvTable(object):
         tbl_name = self.name
         all_cols = self.get_columns()
 
-        if tbl_name == 'csp_10hr_storage':
-            pass
-
         key_col    = md.key_col
         df_cols    = md.df_cols
         drop_cols  = md.drop_cols
-        # df_filters = md.df_filters
 
         if not md.attr_cols:
-            non_attr_cols = df_cols + drop_cols # + df_filters
+            non_attr_cols = df_cols + drop_cols
             md.attr_cols = attr_cols = [col for col in all_cols if col not in non_attr_cols]
 
         # verify that key col is included in the the attr cols
@@ -73,7 +70,19 @@ class CsvTable(object):
         md.df_value_col = ['value']
         md.df_cols = all_cols
         md.drop_cols = None
-        md.attr_cols = attr_cols = [col for col in all_cols if col not in md.df_value_col]
+        md.attr_cols = [col for col in all_cols if col not in md.df_value_col]
+
+    def _compute_sensitivity_metadata(self):
+        md = self.metadata
+        if md.data_table:
+            return
+        tbl_name = self.name
+        all_cols = self.get_columns()
+        md.key_col = md.key_col
+        md.df_value_col = ['sensitivity']
+        md.df_cols = [md.key_col] + md.df_filters + md.df_value_col
+        md.attr_cols = None
+        md.drop_cols = [col for col in all_cols if col not in md.df_cols]
 
 
     def __str__(self):
@@ -99,6 +108,8 @@ class CsvTable(object):
         df.columns = map(str.strip, df.columns)
         if self.output_table:
             self._compute_output_metadata()
+        elif self.compile_sensitivities:
+            self._compute_sensitivity_metadata()
         else:
             self._compute_metadata()
         md = self.metadata
@@ -120,24 +131,26 @@ class CsvTable(object):
         if self.has_sensitivity_col(df):
             s = df[SENSITIVITY_COL]
             s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
+        elif self.compile_sensitivities:
+            # if the data doesn't have a sensitivity column and we are compiling sensitivities, data is just None
+            self.data = None
+            return
 
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
         if self.output_table:
             df = df.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
+        elif self.compile_sensitivities:
+            df = df[md.df_cols]
+            df = df.rename(columns={md.key_col:'name'})
+            for filter_num, filter in enumerate(md.df_filters):
+                df[filter] = filter+':'+df[filter]
+                df = df.rename(columns={filter: 'filter{}'.format(filter_num+1)})
+            df = df.drop_duplicates()
         self.data = df = df.where(pd.notnull(df), other=None)
-
-        if self.output_table:
-            pass
-        else:
-            for col in md.lowcase_cols:
-                pass
-                #df[col] = df[col].str.lower()
 
         rows, cols = df.shape
         if Verbose:
             print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
-
-
 
     def has_sensitivity_col(self, df=None):
         df = self.data if df is None else df

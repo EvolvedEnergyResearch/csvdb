@@ -121,7 +121,8 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None,
                  # Deprecated: given explicit metadata, can probably drop these arguments
-                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,output_tables=False):
+                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
+                 compile_sensitivities=False):
         """
         Initialize a CsvDatabase.
 
@@ -137,6 +138,7 @@ class CsvDatabase(object):
         """
         self.pathname = pathname
         self.output_tables = output_tables
+        self.compile_sensitivities = compile_sensitivities
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -200,13 +202,12 @@ class CsvDatabase(object):
             return self.table_objs[name]
         except KeyError:
             metadata = self.metadata.get(name, CsvMetadata(name))
-            tbl = CsvTable(self, name, metadata,self.output_tables)
+            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities)
             self.table_objs[name] = tbl
             return tbl
 
     def tables_with_classes(self, include_on_demand=False):
         exclude = self.tables_without_classes
-
 
         # Don't create classes for excluded tables; these are rendered as DataFrames only
         tables = [name for name in self.get_table_names() if name not in exclude]
