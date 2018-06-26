@@ -162,6 +162,10 @@ class CsvDatabase(object):
                     self.get_table(name)
 
     @classmethod
+    def clear_cached_database(cls):
+        CsvDatabase.instances = {}
+
+    @classmethod
     def get_database(cls, pathname, **kwargs):
         """
         Return the singleton CsvDatabase instance for the given pathname.
