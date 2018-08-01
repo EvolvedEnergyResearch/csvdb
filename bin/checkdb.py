@@ -16,7 +16,7 @@ _DbMetadata = [CsvMetadata(name, data_table=True) for name in _DataTables]
               ' times and time of last check to determine what needs further checking.')
 
 @click.option('--update/--no-update', default=False,
-              help='Whether to write changed data back to the CSV files. Default is True (update).')
+              help='Whether to write changed data back to the CSV files. Default is --no-update.')
 
 @click.option('--shapes/--no-shapes', default=False,
               help='Check the Shapes data. Default is to skip this check.')
