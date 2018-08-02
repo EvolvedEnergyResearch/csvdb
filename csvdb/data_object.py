@@ -96,6 +96,7 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
+            pdb.set_trace()
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
 
         timeseries = matches[md.df_cols]

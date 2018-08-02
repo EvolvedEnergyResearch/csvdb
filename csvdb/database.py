@@ -109,7 +109,7 @@ class ShapeDataMgr(object):
         if not self.slices:
             self.load_all()
 
-        name = name.replace(' ', '_')
+        #name = name.replace(' ', '_')
         return self.slices[name]
 
 class CsvDatabase(object):
