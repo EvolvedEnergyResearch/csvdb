@@ -1,6 +1,7 @@
 from __future__ import print_function
 from collections import defaultdict
 import pdb
+import logging
 import numpy as np
 
 from .database import CsvDatabase
@@ -86,7 +87,7 @@ class DataObject(object):
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
-            print("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
             return None
 
         # Find the unique sets of attributes for which to create a DF
