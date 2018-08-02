@@ -16,7 +16,8 @@ TIMESTAMP_FILE  = 'last_clean'
 FILE_PATTERN   = re.compile('.*\.(csv|gz)$')
 SPACES_PATTERN = re.compile('\s\s+')
 
-COLUMNS_WITH_UPPER = ['time_zone']
+COLUMNS_WITH_UPPER = ['time_zone', 'time zone', 'energy_unit', 'capacity_unit', 'unit_in', 'unit_out', 'ramp_rate_time_unit'
+                      'variable_om_unit', 'shutdown_cost_unit', 'startup_cost_unit', 'fixed_om_unit', 'curtailment_cost_unit', 'ptc_unit']
 
 _True  = ['t', 'y', 'true',  'yes', 'on']
 _False = ['f', 'n', 'false', 'no',  'off']

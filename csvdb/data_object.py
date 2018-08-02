@@ -99,7 +99,10 @@ class DataObject(object):
             raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined \n {}".format(tbl_name, len(attrs), attrs))
 
         timeseries = matches[md.df_cols]
-        timeseries = timeseries.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
+        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
+        timeseries = timeseries.set_index(index_cols).sort_index()
         #todo improve this try/except
         try:
             timeseries = timeseries.astype(float)
