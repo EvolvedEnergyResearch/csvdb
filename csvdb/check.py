@@ -16,6 +16,9 @@ TIMESTAMP_FILE  = 'last_clean'
 FILE_PATTERN   = re.compile('.*\.(csv|gz)$')
 SPACES_PATTERN = re.compile('\s\s+')
 
+COLUMNS_WITH_UPPER = ['time_zone', 'time zone', 'energy_unit', 'capacity_unit', 'unit_in', 'unit_out', 'ramp_rate_time_unit'
+                      'variable_om_unit', 'shutdown_cost_unit', 'startup_cost_unit', 'fixed_om_unit', 'curtailment_cost_unit', 'ptc_unit']
+
 _True  = ['t', 'y', 'true',  'yes', 'on']
 _False = ['f', 'n', 'false', 'no',  'off']
 _Bool  = _True + _False
@@ -320,8 +323,13 @@ def clean_tables(db, update, skip_dirs=None):
             print("   col {:2d}: {}".format(c, colname))
 
             series = data[colname]
-            original = list(series.unique())
-            cleansed = [re.sub(SPACES_PATTERN, ' ', value.strip().lower()) for value in original if isinstance(value, basestring)]
+            original = [orig for orig in list(series.unique()) if isinstance(orig, basestring)]
+
+            # pandas requires specific capitalization on time_zones, for instance, so we can't make them lower
+            if colname in COLUMNS_WITH_UPPER:
+                cleansed = [re.sub(SPACES_PATTERN, ' ', value.strip()) for value in original]
+            else:
+                cleansed = [re.sub(SPACES_PATTERN, ' ', value.strip().lower()) for value in original]
 
             count = 0
             for old, new in zip(original, cleansed):

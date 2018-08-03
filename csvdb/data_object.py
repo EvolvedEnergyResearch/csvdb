@@ -1,6 +1,7 @@
 from __future__ import print_function
 from collections import defaultdict
 import pdb
+import logging
 import numpy as np
 
 from .database import CsvDatabase
@@ -86,7 +87,7 @@ class DataObject(object):
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
-            print("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
             return None
 
         # Find the unique sets of attributes for which to create a DF
@@ -96,11 +97,13 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            pdb.set_trace()
-            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined".format(tbl_name, len(attrs)))
+            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined \n {}".format(tbl_name, len(attrs), attrs))
 
         timeseries = matches[md.df_cols]
-        timeseries = timeseries.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
+        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
+        timeseries = timeseries.set_index(index_cols).sort_index()
         #todo improve this try/except
         try:
             timeseries = timeseries.astype(float)
