@@ -1,7 +1,7 @@
 # This file provides information used by checkdb.py to perform CSV file validation.
 # Each line provides constraints for the values of one column, regardless of the
 # table it appears in. Each line starts with the column name, followed by a comma.
-# Values can be of three forms:
+# Values can be of four forms:
 # 1. A sequence of comma-delimited strings providing legal values for this column
 # 2. A string of the form TABLE.COLUMN, where the TABLE is the name of a CSV "table"
 #    and COLUMN is a column in that table. The unique values from that column list
@@ -10,6 +10,8 @@
 #    in the column being checked must be convertible to the declared type. For "bool",
 #    legal values are: {t, y, true,  yes, on,  1, f, n, false, no,  off, 0}. The check
 #    against these values is case insensitive.
+# 4. A value that ends in '/', which is assumed to be a directory; the basenames of
+#    the files there, up to the first '.', provide the validation values.
 #
 # Blank lines and lines starting with # are ignored.
 
