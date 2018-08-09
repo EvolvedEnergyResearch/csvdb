@@ -9,6 +9,7 @@ setup(
 
     packages=['csvdb'],
     entry_points={'console_scripts': ['genClasses = csvdb.genClasses:main',
+                                      'updateSchema = bin.updateSchema:main',
                                       'check_csvdb = bin.checkdb:main']},
     install_requires=['futures', 'pandas'],
     include_package_data = False,
