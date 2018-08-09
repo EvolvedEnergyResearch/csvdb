@@ -21,15 +21,15 @@ def clean_col_name(name):
     'Replace problematic chars in column names with underscores'
     return re.sub(_bad_chars, '_', name)
 
-
 class CsvTable(object):
-    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities):
+    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities, mapped_cols=None):
         self.db = db
         self.name = tbl_name
         self.metadata = metadata
         self.output_table = output_table
         self.compile_sensitivities = compile_sensitivities
         self.data = None
+        self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
 
         self.data_class = None
         self.load_all()
@@ -99,9 +99,13 @@ class CsvTable(object):
         if not filename:
             raise CsvdbException('Missing filename for table "{}"'.format(tbl_name))
 
+        # Avoid reading empty strings as nan
+        converters = {col: str for col in self.str_cols} if self.str_cols else {}
+        converters['sensitivity'] = str
+
         openFunc = gzip.open if filename.endswith('.gz') else open
         with openFunc(filename, 'rb') as f:
-            self.data = df = pd.read_csv(f, index_col=None)
+            self.data = df = pd.read_csv(f, index_col=None, converters=converters)
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
@@ -112,6 +116,7 @@ class CsvTable(object):
             self._compute_sensitivity_metadata()
         else:
             self._compute_metadata()
+
         md = self.metadata
         col = md.key_col
 

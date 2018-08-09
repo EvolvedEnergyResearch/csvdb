@@ -42,7 +42,8 @@ class ClassGenerator(object):
         self.all_tables = db.get_table_names()
 
     def generateClass(self, stream, table):
-        # print("Creating class for {}".format(table))
+        print("Generating class for", table)
+
         self.generated.append(table)
 
         base_class = self.superclassName
@@ -102,10 +103,6 @@ class ClassGenerator(object):
         for col in sorted_attrs:
             stream.write('        self.{col} = {col}\n'.format(col=col))
 
-        # Deprecated?
-        # stream.write('\n')
-        # stream.write('        self.load_child_data()\n')    # previously passed scenario, but now stored in instance
-
         args  = [col + '=' + col for col in sorted_attrs]
         args  = observeLinewidth(args, self.linewidth, indent=17)
         names = observeLinewidth(attr_cols, self.linewidth, indent=8)
@@ -157,14 +154,16 @@ def classFromDotSpec(spec):
               help='Path to the database directory. (Default is "database.csvdb")')
 
 @click.option('--data-superclass', '-c', default='csvdb.data_object.DataObject',
-              help='''The superclass generated classes should inherit from, which must be "DataObject" or 
-              a subclass thereof. Format is a module "dot spec" where the final element is the name
-              of the class. (Default: csvdb.data_object.DataObject)''')
+              help='''
+The superclass generated classes should inherit from, which must be "DataObject" or \
+a subclass thereof. Format is a module "dot spec" where the final element is the name \
+of the class. (Default: csvdb.data_object.DataObject)''')
 
 @click.option('--database-class', '-D', default="csvdb.database.CsvDatabase",
-              help='''The name of the module defining the superclass for generated classes. Format is 
-              a module "dot spec" where the final element is the name of the class.
-              (Default: csvdb.database.CsvDatabase)''')
+              help='''
+The name of the module defining the superclass for generated classes. Format \
+is a module "dot spec" where the final element is the name of the class. \
+(Default: csvdb.database.CsvDatabase)''')
 
 @click.option('--outfile', '-o', default='',
               help='File to create. If not provided, generated classes are written to stdout.')

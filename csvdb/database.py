@@ -119,7 +119,7 @@ class CsvDatabase(object):
     file_map = {}   # maps table names => file names under the database root folder
     instances = {}  # maps normalized database pathname to CsvDatabase instances
 
-    def __init__(self, pathname=None, load=True, metadata=None,
+    def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  # Deprecated: given explicit metadata, can probably drop these arguments
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
                  compile_sensitivities=False):
@@ -139,6 +139,7 @@ class CsvDatabase(object):
         self.pathname = pathname
         self.output_tables = output_tables
         self.compile_sensitivities = compile_sensitivities
+        self.mapped_cols = mapped_cols
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -206,7 +207,7 @@ class CsvDatabase(object):
             return self.table_objs[name]
         except KeyError:
             metadata = self.metadata.get(name, CsvMetadata(name))
-            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities)
+            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols)
             self.table_objs[name] = tbl
             return tbl
 
