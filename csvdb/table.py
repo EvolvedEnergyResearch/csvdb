@@ -99,9 +99,8 @@ class CsvTable(object):
         if not filename:
             raise CsvdbException('Missing filename for table "{}"'.format(tbl_name))
 
-        # Avoid reading empty strings as nan
+        # Avoid reading empty strings as nan (sensitivity column must be None)
         converters = {col: str for col in self.str_cols} if self.str_cols else {}
-        converters['sensitivity'] = str
 
         openFunc = gzip.open if filename.endswith('.gz') else open
         with openFunc(filename, 'rb') as f:
