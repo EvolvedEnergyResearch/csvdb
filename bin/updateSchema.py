@@ -111,7 +111,7 @@ def update_from_schema(dbdir, schema_file, run, verbose):
             reorder and print(' - resetting column order')
 
             if run:
-                shutil.copy2(abspath, abspath + '~')  # create backup file
+                # shutil.copy2(abspath, abspath + '~')  # create backup file
 
                 new = pd.DataFrame(columns=source_cols)  # all columns, in correct order
                 old = pd.read_csv(abspath, index_col=None)
