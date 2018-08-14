@@ -6,20 +6,13 @@ import gzip
 import os
 import pandas as pd
 import re
-import shutil
 
-from csvdb.database import SHAPE_DIR
+from csvdb.database import SHAPE_DIR, CSV_PATTERN, ZIP_PATTERN
 from csvdb.error import CsvdbException
 
 Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
 DefaultSchemaFile = 'csvdb-schema.csv'
-
-# case-insensitive match of *.csv and *.csv.gz files
-CsvPattern = re.compile('.*\.csv(\.gz)?$', re.IGNORECASE)
-
-# case-insensitive match of *.gz files
-ZipPattern = re.compile('.*\.gz$', re.IGNORECASE)
 
 
 def create_file_map(dbdir):
@@ -38,7 +31,7 @@ def create_file_map(dbdir):
             continue
 
         for filename in filenames:
-            if re.match(CsvPattern, filename):
+            if re.match(CSV_PATTERN, filename):
                 basename = os.path.basename(filename)
                 tblname = basename.split('.')[0]   # removes either .csv or .csv.gz
                 abspath = os.path.abspath(os.path.join(dirpath, filename))
@@ -54,7 +47,7 @@ def create_schema_file(dbdir, schema_file):
         for tblname, csvFile in file_map.items():
 
             if not tblname in Tables_to_skip:
-                openFunc = gzip.open if re.match(ZipPattern, csvFile) else open
+                openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
                 with openFunc(abspath, 'rb') as csv:
@@ -108,12 +101,10 @@ def update_from_schema(dbdir, schema_file, run, verbose):
             print('{}:'.format(relpath))
             extra   and print(' - dropping extra columns {}'.format(sorted(extra)))
             missing and print(' - adding missing cols {}'.format(sorted(missing)))
-            reorder and print(' - resetting column order')
+            reorder and print(' - reordering columns')
 
             if run:
-                # shutil.copy2(abspath, abspath + '~')  # create backup file
-
-                new = pd.DataFrame(columns=source_cols)  # all columns, in correct order
+                new = pd.DataFrame(columns=source_cols)     # all columns, in correct order
                 old = pd.read_csv(abspath, index_col=None)
                 old.columns = map(str.strip, old.columns)   # strip whitespace
 

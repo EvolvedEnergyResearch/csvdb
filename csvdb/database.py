@@ -21,12 +21,18 @@ from glob import glob
 import gzip
 import os
 import pandas as pd
+import re
 import pdb
 from .error import CsvdbException
 from .table import CsvTable
 
 pd.set_option('display.width', 200)
 
+# case-insensitive match of *.csv and *.csv.gz files
+CSV_PATTERN = re.compile('.*\.csv(\.gz)?$', re.IGNORECASE)
+
+# case-insensitive match of *.gz files
+ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
 
 class CsvMetadata(object):
     __slots__ = ['table_name', 'data_table', 'key_col', 'attr_cols',
@@ -79,7 +85,7 @@ class ShapeDataMgr(object):
             return self.slices
 
         for shape_name, filename in self.file_map.iteritems():
-            openFunc = gzip.open if filename.endswith('.gz') else open
+            openFunc = gzip.open if re.match(ZIP_PATTERN, filename) else open
             with openFunc(filename, 'rb') as f:
                 print("Reading shape data for {}".format(shape_name))
                 df = pd.read_csv(f, index_col=None)
@@ -277,7 +283,7 @@ class CsvDatabase(object):
 
             for filename in filenames:
                 basename = os.path.basename(filename)
-                if (basename.endswith('.csv') or basename.endswith('.CSV')  or basename.endswith('.gz') or basename.endswith('.GZ')):
+                if re.match(CSV_PATTERN, basename):
                     tbl_name = basename.split('.')[0]
                     self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 
