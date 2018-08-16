@@ -24,7 +24,7 @@ import pandas as pd
 import re
 import pdb
 from .error import CsvdbException
-from .table import CsvTable
+from .table import CsvTable, REF_SCENARIO, SENSITIVITY_COL
 
 pd.set_option('display.width', 200)
 
@@ -74,11 +74,12 @@ class ShapeDataMgr(object):
     """
     Handles the special case of the pre-sliced ShapesData
     """
-    def __init__(self, db_path):
+    def __init__(self, db_path, compile_sensitivities):
         self.db_path = db_path
         self.tbl_name = SHAPE_DIR   # Deprecated?
         self.slices = {}            # maps shape name to DF containing that shape's data rows
         self.file_map = self.create_filemap(db_path)
+        self.compile_sensitivities = compile_sensitivities
 
     def load_all(self):
         if self.slices:
@@ -89,6 +90,14 @@ class ShapeDataMgr(object):
             with openFunc(filename, 'rb') as f:
                 print("Reading shape data for {}".format(shape_name))
                 df = pd.read_csv(f, index_col=None)
+                if SENSITIVITY_COL in df.columns:
+                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
+                if self.compile_sensitivities:
+                    if SENSITIVITY_COL in df.columns:
+                        df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
+                        df['name'] = shape_name
+                    else:
+                        df = None
                 self.slices[shape_name] = df
 
     @classmethod
@@ -126,7 +135,6 @@ class CsvDatabase(object):
     instances = {}  # maps normalized database pathname to CsvDatabase instances
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
-                 # Deprecated: given explicit metadata, can probably drop these arguments
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
                  compile_sensitivities=False):
         """
@@ -159,7 +167,7 @@ class CsvDatabase(object):
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
-        self.shapes = ShapeDataMgr(pathname)
+        self.shapes = ShapeDataMgr(pathname, compile_sensitivities)
 
         # cache data for all tables for which there are generated classes
         if load:
