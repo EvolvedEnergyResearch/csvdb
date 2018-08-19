@@ -131,7 +131,6 @@ class CsvDatabase(object):
     """
     A database class that caches table data and provides a few fetch methods.
     """
-    file_map = {}   # maps table names => file names under the database root folder
     instances = {}  # maps normalized database pathname to CsvDatabase instances
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
@@ -154,6 +153,8 @@ class CsvDatabase(object):
         self.output_tables = output_tables
         self.compile_sensitivities = compile_sensitivities
         self.mapped_cols = mapped_cols
+        # maps table names => file names under the database root folder
+        self.file_map = {}
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
