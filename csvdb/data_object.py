@@ -2,21 +2,59 @@ from __future__ import print_function
 from collections import defaultdict
 import pdb
 import logging
-import numpy as np
 
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
-from .utils import col_match, filter_query
+from .utils import filter_query
+
+class StringMap(object):
+    """
+    A simple class to map strings to integer IDs and back again.
+    """
+    instance = None
+
+    @classmethod
+    def getInstance(cls):
+        if not cls.instance:
+            cls.instance = cls()
+
+        return cls.instance
+
+    def __init__(self):
+        self.text_to_id = {}     # maps text to integer id
+        self.id_to_text = {}     # maps id back to text
+        self.next_id = 1        # the next id to assign
+
+    def store(self, text):
+        # If already known, return it
+        id = self.get_id(text, raise_error=False)
+        if id is not None:
+            return id
+
+        id = -self.next_id      # make these negative to distinguish them
+        self.next_id += 1
+
+        self.text_to_id[text] = id
+        self.id_to_text[id] = text
+        return id
+
+    def get_id(self, text, raise_error=True):
+        return self.text_to_id[text] if raise_error else (None if id is None else self.text_to_id.get(text, None))
+
+    def get_text(self, id, raise_error=True):
+        return self.id_to_text[id] if raise_error else (None if id is None else self.id_to_text.get(id, None))
+
 
 def get_database():
     return CsvDatabase.get_database(None)
 
-def _isListOfNoneOrNan(obj):
-    if len(obj) != 1:
-        return False
-
-    item = obj[0]
-    return item is None or (isinstance(item, float) and np.isnan(item))
+# Deprecated?
+# def _isListOfNoneOrNan(obj):
+#     if len(obj) != 1:
+#         return False
+#
+#     item = obj[0]
+#     return item is None or (isinstance(item, float) and np.isnan(item))
 
 
 class DataObject(object):
@@ -72,7 +110,7 @@ class DataObject(object):
     def timeseries(self):
         try:
             return self._timeseries
-        except KeyError:
+        except KeyError:                # TODO: looks like this predates setting _timeseries = None in __init__
             return None
 
     def load_timeseries(self, key, **filters):
@@ -125,7 +163,6 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        #key = key.lower()
 
         if md.df_cols:
             tup = self.load_timeseries(key, **filters)
@@ -138,8 +175,10 @@ class DataObject(object):
                 if reference_name is not None:
                     key = reference_name
                     tup = self.__class__.get_row(key, scenario=scenario, **filters)
+
             if tup is None:
                 tup = [None] * len(cols)
+
             # filter out the non-attribute columns
             tup = [t for t, c in zip(tup, cols) if c in md.attr_cols]
 
@@ -170,3 +209,31 @@ class DataObject(object):
         if scenario != self._scenario:
             raise CsvdbException("DataObject: mismatch between caller's scenario ({}) and self._scenario ({})".format(scenario, self._scenario))
 
+    # TODO: Imported from EP. Not sure if it will remain.
+    # Caller gets mapped cols via "from .text_mappings import MappedCols"
+    def map_strings(self, df, mapped_cols, drop_str_cols=True):
+        tbl_name = self._data_table_name
+
+        strmap = StringMap.getInstance()
+        str_cols = mapped_cols.get(tbl_name, [])
+
+        for col in str_cols:
+            # Ensure that all values are in the StringMap
+            values = df[col].unique()
+            for value in values:
+                strmap.store(value)
+
+            # mapped column "foo" becomes "foo_id"
+            id_col = col + '_id'
+
+            # Force string cols to str and replace 'nan' with None
+            df[col] = df[col].astype(str)
+            df.loc[df[col] == 'nan', col] = None
+
+            # create a column with integer ids
+            df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
+
+        if drop_str_cols:
+            df.drop(str_cols, axis=1, inplace=True)
+
+        return df
