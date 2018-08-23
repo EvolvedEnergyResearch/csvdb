@@ -31,7 +31,7 @@ class StringMap(object):
         if id is not None:
             return id
 
-        id = -self.next_id      # make these negative to distinguish them
+        id = self.next_id
         self.next_id += 1
 
         self.text_to_id[text] = id
@@ -44,6 +44,10 @@ class StringMap(object):
     def get_text(self, id, raise_error=True):
         return self.id_to_text[id] if raise_error else (None if id is None else self.id_to_text.get(id, None))
 
+def str_to_id(text):
+    obj = StringMap.getInstance()
+    id = obj.store(text)
+    return id
 
 def get_database():
     return CsvDatabase.get_database(None)

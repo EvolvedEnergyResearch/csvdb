@@ -2,8 +2,14 @@ from .error import CsvdbException
 
 def col_match(col, value):
     """
-    Creates a query string to match a string column in a dataframe.
+    Creates a query string to match a column in a dataframe.
     """
+    if value is None:
+        return '{} is None'.format(col)
+
+    if isinstance(value, (int,  float)):
+        return '{} == {}'.format(col, value)
+
     return '{} == "{}"'.format(col, value)
 
 def filter_query(df, filters):
