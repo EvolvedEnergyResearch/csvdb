@@ -50,10 +50,10 @@ def create_schema_file(dbdir, schema_file):
                 openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
-                with openFunc(abspath, 'rb') as csv:
-                    header = csv.readline()
-                    schema.write(csvFile + ',')  # insert CSV basename in first column
-                    schema.write(header)
+                with openFunc(abspath, 'rb') as csv:    # N.B. binary mode doesn't translate line endings
+                    header = csv.readline().strip()
+                    schema.write(csvFile + ',')         # insert CSV basename in first column
+                    schema.write(header + '\n')         # ensure consistent line endings
 
 def update_from_schema(dbdir, schema_file, run, verbose):
     file_map = create_file_map(dbdir)
