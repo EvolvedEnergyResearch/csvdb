@@ -14,6 +14,17 @@ Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
 DefaultSchemaFile = 'csvdb-schema.csv'
 
+def mkdirs(newdir, mode=0o770):
+    """
+    Try to create the full path `newdir` and ignore the error if it already exists.
+    """
+    from errno import EEXIST
+
+    try:
+        os.makedirs(newdir, mode)
+    except OSError as e:
+        if e.errno != EEXIST:
+            raise
 
 def create_file_map(dbdir):
     file_map = {}  # maps table names => file names under the database root folder
@@ -34,7 +45,7 @@ def create_file_map(dbdir):
             if re.match(CSV_PATTERN, filename):
                 basename = os.path.basename(filename)
                 tblname = basename.split('.')[0]   # removes either .csv or .csv.gz
-                abspath = os.path.abspath(os.path.join(dirpath, filename))
+                abspath = os.path.abspath(os.path.join(dirpath, filename)).replace('\\', '/')
                 file_map[tblname] = abspath[prefixLen:]     # save path relative to dbdir
 
     print("Found {} .CSV files for {}".format(len(file_map), dbdir))
@@ -45,15 +56,16 @@ def create_schema_file(dbdir, schema_file):
 
     with open(schema_file, 'w') as schema:
         for tblname, csvFile in file_map.items():
+            csvFile = csvFile.replace('\\', '/')
 
             if not tblname in Tables_to_skip:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
-                with openFunc(abspath, 'rb') as csv:
-                    header = csv.readline()
-                    schema.write(csvFile + ',')  # insert CSV basename in first column
-                    schema.write(header)
+                with openFunc(abspath, 'rb') as csv:    # N.B. binary mode doesn't translate line endings
+                    header = csv.readline().strip()
+                    schema.write(csvFile + ',')         # insert CSV basename in first column
+                    schema.write(header + '\n')         # ensure consistent line endings
 
 def update_from_schema(dbdir, schema_file, run, verbose):
     file_map = create_file_map(dbdir)
@@ -64,8 +76,8 @@ def update_from_schema(dbdir, schema_file, run, verbose):
     for line in lines:
         line = line.strip()
         source_cols = line.split(',')
-        relpath = source_cols.pop(0)
-        abspath = os.path.join(dbdir, relpath)
+        relpath = source_cols.pop(0).replace('\\', '/')
+        abspath = os.path.join(dbdir, relpath).replace('\\', '/')
 
         basename = os.path.basename(relpath)
         tblname = basename.split('.')[0]
@@ -75,6 +87,7 @@ def update_from_schema(dbdir, schema_file, run, verbose):
         if not (csvFile and os.path.exists(abspath)):
             print('Creating empty file {}'.format(relpath))
             if run:
+                mkdirs(os.path.dirname(abspath))
                 with open(abspath, 'w') as f:
                     f.write(','.join(source_cols))
                     f.write('\n')
@@ -91,25 +104,30 @@ def update_from_schema(dbdir, schema_file, run, verbose):
                 print('{}: OK'.format(relpath))
 
         else:
-            source_set = set(map(str.strip, source_cols))
-            target_set = set(map(str.strip, target_cols))
+            source_cols = map(str.strip, source_cols)
+            target_cols = map(str.strip, target_cols)
+
+            source_set = set(source_cols)
+            target_set = set(target_cols)
 
             extra = target_set - source_set
             missing = source_set - target_set
-            reorder = (source_set == target_set)  # we already know source_cols != target_cols
+            reorder = (source_set == target_set) and (source_cols != target_cols)
 
-            print('{}:'.format(relpath))
-            extra   and print(' - dropping extra columns {}'.format(sorted(extra)))
-            missing and print(' - adding missing cols {}'.format(sorted(missing)))
-            reorder and print(' - reordering columns')
+            if extra or missing or reorder:
+                print('{}:'.format(relpath))
+                extra   and print(' - dropping extra columns {}'.format(sorted(extra)))
+                missing and print(' - adding missing cols {}'.format(sorted(missing)))
+                reorder and print(' - reordering columns')
 
             if run:
                 new = pd.DataFrame(columns=source_cols)     # all columns, in correct order
                 old = pd.read_csv(abspath, index_col=None)
-                old.columns = map(str.strip, old.columns)   # strip whitespace
+                old.columns = map(str.strip, old.columns)
 
-                for col in source_set.intersection(target_set):
-                    new[col] = old[col]
+                if len(old) > 0:
+                    for col in source_set.intersection(target_set):
+                        new[col] = old[col]
 
                 new.to_csv(abspath, index=None)
 
