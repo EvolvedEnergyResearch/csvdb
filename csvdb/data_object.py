@@ -139,7 +139,8 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            raise CsvdbException("DataObject: table '{}': there are {} rows of data but no df_filters defined \n {}".format(tbl_name, len(attrs), attrs))
+            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique())!=1]
+            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[[md.key_col]+columns_with_non_unique_values]))
 
         timeseries = matches[md.df_cols]
         index_cols = [c for c in md.df_cols if c not in md.df_value_col]
