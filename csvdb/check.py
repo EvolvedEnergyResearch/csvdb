@@ -29,10 +29,21 @@ def check_bool(series):
 
     return bad
 
-def check_type(series, aType):
+def check_bool_or_empty(series):
     bad = []
 
     for i, value in series.iteritems():
+        if isinstance(value, types.StringTypes) and value.lower() not in _Bool and value is not None:
+            bad.append((i, value))
+
+    return bad
+
+def check_type(series, aType, allow_null=False):
+    bad = []
+
+    for i, value in series.iteritems():
+        if value is None and allow_null:
+            continue
         try:
             aType(value)
         except:
@@ -46,10 +57,19 @@ def check_float(series):
 def check_int(series):
     return check_type(series, int)
 
+def check_float_or_empty(series):
+    return check_type(series, float, allow_null=True)
+
+def check_int_or_empty(series):
+    return check_type(series, int, allow_null=True)
+
 _check_fns = {
     'int'   : check_int,
+    'int_or_empty': check_int_or_empty,
     'float' : check_float,
-    'bool'  : check_bool
+    'float_or_empty': check_float_or_empty,
+    'bool'  : check_bool,
+    'bool_or_empty'  : check_bool_or_empty
 }
 
 def check_value_list(series, values):
@@ -227,7 +247,6 @@ def check_tables(db, col_md):
 
                 if isinstance(validation, list):
                     errors = check_value_list(series, validation)
-
                 else: # it's a validation function
                     errors = validation(series)
 
@@ -235,7 +254,10 @@ def check_tables(db, col_md):
                     isClean = False
                     print("Errors in {}.{}:".format(tblname, colname))
                     for i, value in errors:
-                        print("    unknown value '{}' at line {}".format(value, i+2))   # +1 for header; +1 to translate 0 offset
+                        if isinstance(validation, list):
+                            print("    Value '{}' at line {} not found in allowable list {}".format(value, i+2, validation))   # +1 for header; +1 to translate 0 offset
+                        else:
+                            print("    Value '{}' at line {} failed data type check with function {}".format(value, i + 2, validation))
 
     return isClean
 
