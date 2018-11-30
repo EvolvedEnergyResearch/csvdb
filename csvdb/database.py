@@ -81,14 +81,15 @@ class ShapeDataMgr(object):
         self.file_map = self.create_filemap(db_path)
         self.compile_sensitivities = compile_sensitivities
 
-    def load_all(self):
+    def load_all(self, verbose=True):
         if self.slices:
             return self.slices
 
         for shape_name, filename in self.file_map.iteritems():
             openFunc = gzip.open if re.match(ZIP_PATTERN, filename) else open
             with openFunc(filename, 'rb') as f:
-                print("Reading shape data for {}".format(shape_name))
+                if verbose:
+                    print("Reading shape data for {}".format(shape_name))
                 df = pd.read_csv(f, index_col=None)
                 if SENSITIVITY_COL in df.columns:
                     df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)

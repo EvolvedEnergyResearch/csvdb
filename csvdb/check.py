@@ -6,18 +6,15 @@ import pandas as pd
 import os
 import types
 import re
+import csv
 from .database import CsvDatabase, CsvMetadata, ShapeDataMgr
 from .error import CsvdbException, ValidationDataError
 import pdb
 
-VALIDATION_FILE = 'validation.txt'
-TIMESTAMP_FILE  = 'last_clean'
+VALIDATION_FILE = 'VALIDATION.txt'
 
 FILE_PATTERN   = re.compile('.*\.(csv|gz)$')
 SPACES_PATTERN = re.compile('\s\s+')
-
-COLUMNS_WITH_UPPER = ['time_zone', 'time zone', 'energy_unit', 'capacity_unit', 'unit_in', 'unit_out', 'ramp_rate_time_unit'
-                      'variable_om_unit', 'shutdown_cost_unit', 'startup_cost_unit', 'fixed_om_unit', 'curtailment_cost_unit', 'ptc_unit']
 
 _True  = ['t', 'y', 'true',  'yes', 'on']
 _False = ['f', 'n', 'false', 'no',  'off']
@@ -83,7 +80,13 @@ def is_float(s):
     except ValueError:
         return False
 
-def read_metadata(db):
+def get_validation_file_path(validationdir):
+    for dirpath, dirnames, filenames in os.walk(validationdir, topdown=False):
+        if VALIDATION_FILE in filenames:
+            return os.path.join(dirpath, VALIDATION_FILE)
+    raise ValueError("Unable to find validation file {} within package {}".format(VALIDATION_FILE, validationdir))
+
+def read_metadata(db, validationdir):
     """
     Reads the CsvDatabase validation metadata from the file 'validation.txt' found
     at the top level of the CsvDatabase directory.
@@ -93,7 +96,7 @@ def read_metadata(db):
         values being either a list of strings or a function to call on the column
         to validate the values therein.
     """
-    filename = os.path.join(db.pathname, VALIDATION_FILE)
+    filename = get_validation_file_path(validationdir)
 
     with open(filename, 'r') as f:
         lines = [(num, line.strip()) for num, line in enumerate(f) if not line.startswith('#')]
@@ -184,13 +187,12 @@ def extract_name(path):
     parts = basename.split('.')
     return parts[0]
 
-def check_tables(db, col_md, shapes):
+def check_tables(db, col_md):
     """
     Check whether the CsvDatabase tables (CSV files) are clean.
 
     :param db: (CsvDatabase) a CsvDatabase instance
     :param col_md: (Dict) values dictionary returned by read_metadata()
-    :param shapes: (bool) whether to check shape files
     :return: True if the tables are "clean" (i.e., no errors), False otherwise
     """
     isClean = True
@@ -211,7 +213,7 @@ def check_tables(db, col_md, shapes):
             isClean = False
 
         if len(data) == 0:
-            print("Skipping empty table", tblname)
+            # print("Skipping empty table", tblname)
             continue
 
         for colname in data.columns:
@@ -237,42 +239,20 @@ def check_tables(db, col_md, shapes):
 
     return isClean
 
-def update_timestamp(db, remove=False):
-    '''
-    If remove is False, update the timestamp file's modification to
-    the current time. If remove is True, just remove the file.
-
-    :param db: (CsvDatabase) a CsvDatabase instance
-    :param remove: (bool) whether to remove the timestamp file
-    :return: nothing
-    '''
-    timestamp_path = os.path.join(db.pathname, TIMESTAMP_FILE)
-    if remove:
-        if os.path.exists(timestamp_path):
-            os.remove(timestamp_path)
-    else:
-        open(timestamp_path, 'w').close()
-
-def changed_tables(db_pathname, skip_dirs=None):
-    timestamp_path = os.path.join(db_pathname, TIMESTAMP_FILE)
-
-    # If the timestamp file is not found, all files are checked
-    timestamp = os.path.getmtime(timestamp_path) if os.path.exists(timestamp_path) else 0
-
-    changed = []
+def list_tables(db_pathname, skip_dirs=None):
+    tables = []
 
     for dirpath, dirnames, filenames in os.walk(db_pathname, topdown=False):
         if skip_dirs and os.path.basename(dirpath) in skip_dirs:
             continue
 
         for filename in filenames:
-            path = os.path.abspath(os.path.join(dirpath, filename))
-            if re.match(FILE_PATTERN, filename) and os.path.getmtime(path) > timestamp:
+            if re.match(FILE_PATTERN, filename):
                 basename = os.path.basename(filename)
                 tbl_name = basename.split('.')[0]
-                changed.append(tbl_name)
+                tables.append(tbl_name)
 
-    return changed
+    return tables
 
 def clean_tables(db, update, skip_dirs=None):
     """
@@ -284,93 +264,83 @@ def clean_tables(db, update, skip_dirs=None):
     :param skip_dirs: (list of str) directories to skip when cleaning
     :return: (bool) whether any errors where found and fixed.
     """
-    for tblname in changed_tables(db.pathname, skip_dirs=skip_dirs):
-
+    any_modified = False
+    for tblname in list_tables(db.pathname, skip_dirs=skip_dirs):
         modified = False
-        tbl = db.get_table(tblname)
-        data = tbl.data
+        pathname = db.file_map[tblname]
 
-        rows, cols = data.shape
-        print("Table: {} ({:,} rows, {} cols)".format(tblname, rows, cols))
+        data = []
+        openFunc = gzip.open if pathname.endswith('.gz') else open
+        with openFunc(pathname, 'rb') as infile:
+            csvreader = csv.reader(infile, delimiter=',')
+            for row in csvreader:
+                data.append(row)
 
-        # pandas converts blank col names to 'Unnamed: n' where n is the col's index
-        unnamed = filter(lambda name: name.startswith('Unnamed: '), data.columns)
+        rows, columns = len(data), len(data[0])
+        # print("Table: {} ({:,} rows, {} cols)".format(tblname, rows, columns))
 
-        for colname in unnamed:
-            # We convert blank values to None when reading CSV files.
-            # Drop any 'unnamed' col whose values are all None.
-            if all(map(lambda value: value is None, data[colname])):
-                print("Removing empty columns from table {}".format(tblname))
-                tbl.data.drop(colname, axis=1, inplace=True)
-                modified = True
-
-        # Remove surrounding whitespace in column names and replace multiple
-        # whitespace chars with a single space.
-        colnames = data.columns.str.strip()
-        # N.B. the Series.str.replace() method failed with what looks like a bug, thus this approach
-        colnames = pd.Index(map(lambda s: re.sub(SPACES_PATTERN, ' ', s), colnames))
-
-        if not colnames.equals(data.columns):
-            print("Removing extra blanks from column names in table {}".format(tblname))
-            data.columns = colnames
+        # any rows that are all blanks get dropped
+        data = [row for row in data if not all([val=='' for val in row])]
+        if len(data)<rows:
+            print("   Removing {} blank rows from table {}".format(rows-len(data), tblname))
             modified = True
 
-        if len(data) == 0:
-            print("Skipping empty table", tblname)
-            continue
+        # transpose list to make it easy to check the columns for blanks
+        data = map(list, zip(*data))
 
-        for c, colname in enumerate(data.columns):
-            print("   col {:2d}: {}".format(c, colname))
+        # any rows that are all blanks get dropped
+        data = [row for row in data if not all([val=='' for val in row])]
+        if len(data)<columns:
+            print("   Removing {} empty columns from table {}".format(columns-len(data), tblname))
+            modified = True
 
-            series = data[colname]
-            original = [orig for orig in list(series.unique()) if isinstance(orig, basestring)]
+        # transpose back to the origional data shape
+        data = map(list, zip(*data))
 
-            # pandas requires specific capitalization on time_zones, for instance, so we can't make them lower
-            if colname in COLUMNS_WITH_UPPER:
-                cleansed = [re.sub(SPACES_PATTERN, ' ', value.strip()) for value in original]
-            else:
-                cleansed = [re.sub(SPACES_PATTERN, ' ', value.strip().lower()) for value in original]
+        # replace any strings that have extra spaces
+        for row_num, row in enumerate(data):
+            for col_num, val in enumerate(row):
+                stripped = re.sub(SPACES_PATTERN, ' ', val.strip())
+                if val != stripped:
+                    print("   Replacing string '{}' with '{}'".format(val, stripped))
+                    data[row_num][col_num] = stripped
+                    modified = True
 
-            count = 0
-            for old, new in zip(original, cleansed):
-                if isinstance(old, basestring) and old != new:
-                    series.replace(old, new, inplace=True)
-                    count += 1
-
-            if count:
-                print("Modified {} unique values in {}.{}".format(count, tblname, colname))
-                modified = True
-
-        if update and modified:
-            pathname = db.file_for_table(tblname)
-            print("Writing", pathname)
-            openFunc = gzip.open if pathname.endswith('.gz') else open
-            with openFunc(pathname, 'wb') as f:
-                data.to_csv(f, index=False)
-
-    if update:
-        update_timestamp(db)
+        if modified:
+            any_modified = True
+            if update:
+                print("   Writing", db.file_map[tblname])
+                openFunc = gzip.open if pathname.endswith('.gz') else open
+                with openFunc(pathname, 'wb') as outfile:
+                    csvwriter = csv.writer(outfile, delimiter=',')
+                    for row in data:
+                        csvwriter.writerow(row)
+    if any_modified:
+        if update:
+            print("Database errors found and fixed - files have been modified")
+        else:
+            print("Database errors found but update=False - no files were modified")
+    else:
+        print("Finished cleaning comming db errors with no issues found")
 
 
-def validate_db(dbdir, update, shapes, force, metadata=None):
+def validate_db(dbdir, validationdir, update, metadata):
     shapes_file_map = ShapeDataMgr.create_filemap(dbdir)
     shape_tables = shapes_file_map.keys()
 
     metadata += [CsvMetadata(tbl_name, data_table=True) for tbl_name in shape_tables]
     db = CsvDatabase.get_database(dbdir, load=False, metadata=metadata)
 
-    col_md = read_metadata(db)
+    print("Cleaning common errors in db files")
+    clean_tables(db, update, skip_dirs='ShapeData')
 
+    col_md = read_metadata(db, validationdir)
+
+    print("\nChecking db integrity")
     # Assume all shape tables are "data tables", i.e., no "name" column is expected
+    db.shapes.load_all(verbose=False)
 
-    if force:
-        update_timestamp(db, remove=True)
-
-    if shapes:
-        db.shapes.load_all()
-
-    clean_tables(db, update, skip_dirs='ShapeData' if shapes is False else None)
-
-    good = check_tables(db, col_md, shapes)
-    message = "Database is clean" if good else "Database contains data errors"
+    good = check_tables(db, col_md)
+    message = "Database is clean\n" if good else "Database contains data errors\n"
     print(message)
+    CsvDatabase.clear_cached_database()
