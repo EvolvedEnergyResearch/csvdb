@@ -154,10 +154,12 @@ class DataObject(object):
             pass
         if 'gau' in timeseries.index.names:
             timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
-        self._timeseries = timeseries.copy(deep=True)
 
-        # Don't drop filter cols. Make this optional? (N.B. also affects genClasses)
-        # row = attrs.drop(df_filters, axis=1)
+        duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
+        if any(duplicate_index):
+            raise CsvdbException("'{}' in table '{}': duplicate indices found: \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+
+        self._timeseries = timeseries.copy(deep=True)
         row = attrs
 
         tup = tuple(row.values[0])
