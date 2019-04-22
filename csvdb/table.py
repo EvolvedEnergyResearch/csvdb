@@ -104,7 +104,7 @@ class CsvTable(object):
 
         openFunc = gzip.open if filename.endswith('.gz') else open
         with openFunc(filename, 'rb') as f:
-            self.data = df = pd.read_csv(f, index_col=None, converters=converters)
+            self.data = df = pd.read_csv(f, index_col=None, converters=converters, na_values='')
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names

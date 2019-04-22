@@ -297,7 +297,7 @@ class CsvDatabase(object):
                     tbl_name = basename.split('.')[0]
                     self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 
-        print("Found {} .CSV files for {}".format(len(self.file_map), pathname))
+        # print("Found {} .CSV files for {}".format(len(self.file_map), pathname))
 
 
     def file_for_table(self, tbl_name):
