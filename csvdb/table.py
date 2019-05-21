@@ -125,7 +125,8 @@ class CsvTable(object):
                 raise MissingKeyColumn(tbl_name, col)
 
             if df[col].hasnans:
-                raise MissingKeyValue(tbl_name, col)
+                df = df[~df[col].isnull()]
+                # raise MissingKeyValue(tbl_name, col)
 
             # ensure that keys are read as strings
             df[col] = df[col].astype(str)

@@ -181,7 +181,8 @@ class DataObject(object):
 
             duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
             if any(duplicate_index):
-                raise CsvdbException("'{}' in table '{}': duplicate indices found: \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
             self._timeseries = timeseries.copy(deep=True) # RIO uses _timeseries
@@ -195,6 +196,8 @@ class DataObject(object):
         return tup
 
     def init_from_db(self, key, scenario, **filters):
+        if key is None:
+            return
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
