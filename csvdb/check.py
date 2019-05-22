@@ -1,8 +1,6 @@
-#!/usr/bin/env python
 from __future__ import print_function
 from glob import glob
 import gzip
-import pandas as pd
 import os
 import types
 import re
@@ -23,7 +21,7 @@ _Bool  = _True + _False
 def check_bool(series):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if isinstance(value, types.StringTypes) and value.lower() not in _Bool:
             bad.append((i, value))
 
@@ -32,7 +30,7 @@ def check_bool(series):
 def check_bool_or_empty(series):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if isinstance(value, types.StringTypes) and value.lower() not in _Bool and value is not None:
             bad.append((i, value))
 
@@ -41,7 +39,7 @@ def check_bool_or_empty(series):
 def check_type(series, aType, allow_null=False):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if value is None and allow_null:
             continue
         try:
@@ -135,7 +133,7 @@ def read_metadata(db, validationdir):
 
     for num, line in lines:
         if line:        # ignore blank lines
-            items = filter(lambda item: item != "", line.split(','))
+            items = [item for item in line.spliit(',') if item != ""]
             if len(items) < 2:
                 raise ValidationDataError(filename, num, "expected at least 2 items, got '{}'".format(line))
 
@@ -181,15 +179,15 @@ def read_metadata(db, validationdir):
                 elif value.endswith('/'):
                     pattern = os.path.join(db.pathname, value, '*')
                     paths = glob(pattern)
-                    values = map(extract_name, paths)
+                    values = [extract_name(p) for p in paths]
 
                     save_values(num, target_col, values)
             else:
                 # treat numbers correctly
                 if all(map(str.isdigit, items)):
-                    items = map(int, items)
+                    items = [int(i) for i in items]
                 elif all(map(is_float, items)):
-                    items = map(float, items)
+                    items = [float(i) for i in items]
 
                 save_values(num, target_col, items)
 
@@ -317,7 +315,7 @@ def clean_tables(db, update, skip_dirs=None):
             modified = True
 
         # transpose back to the origional data shape
-        data = map(list, zip(*data))
+        data = [list(x) for x in zip(*data)]
 
         # replace any strings that have extra spaces
         for row_num, row in enumerate(data):

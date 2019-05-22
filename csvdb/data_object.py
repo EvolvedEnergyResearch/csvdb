@@ -52,14 +52,6 @@ def str_to_id(text):
 def get_database(pathname=None):
     return CsvDatabase.get_database(pathname)
 
-# Deprecated?
-# def _isListOfNoneOrNan(obj):
-#     if len(obj) != 1:
-#         return False
-#
-#     item = obj[0]
-#     return item is None or (isinstance(item, float) and np.isnan(item))
-
 
 class DataObject(object):
     # dict keyed by class object; value is list of instances of the class
@@ -128,6 +120,7 @@ class DataObject(object):
         md = tbl.metadata
         index_cols = [c for c in md.df_cols if c not in md.df_value_col]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
+        timeseries = timeseries.copy()  # avoid warning about setting a slice
         timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries

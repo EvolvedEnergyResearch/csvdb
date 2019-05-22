@@ -108,7 +108,7 @@ class CsvTable(object):
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
-        df.columns = map(str.strip, df.columns)
+        df.columns = [col.strip() for col in df.columns]
         if self.output_table:
             self._compute_output_metadata()
         elif self.compile_sensitivities:

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-
 from __future__ import print_function
 import click
 import inspect
 import sys
+
 
 from csvdb import CsvDatabase, CsvdbException, importFromDotSpec, camelCase, DataObject
 
@@ -67,7 +67,7 @@ class ClassGenerator(object):
 
         def write_class_var(name, col_or_cols):
             if isinstance(col_or_cols, (list, tuple)):
-                col_strs = map(lambda s: '"{}"'.format(s), col_or_cols)
+                col_strs = ['"{}"'.format(s) for s in col_or_cols]
                 stream.write('    {} = [{}]\n'.format(name, observeLinewidth(col_strs, self.linewidth, indent=12)))
             else:
                 stream.write('    {} = "{}"\n'.format(name, col_or_cols))

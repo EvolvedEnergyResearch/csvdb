@@ -52,6 +52,11 @@ class ElectricStorage(TechMainCapitalCostLoader):
 
 
 def main():
+    import pandas as pd
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.expand_frame_repr', False)
+    pd.set_option('max_colwidth', -1)
+
     pathname = path.normpath(path.join(path.realpath(__file__), '..', '..', 'test.csvdb'))
 
     db = TestDatabase.get_database(pathname)

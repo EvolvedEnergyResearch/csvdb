@@ -85,7 +85,7 @@ class ShapeDataMgr(object):
         if self.slices:
             return self.slices
 
-        for shape_name, filename in self.file_map.iteritems():
+        for shape_name, filename in self.file_map.items():
             openFunc = gzip.open if re.match(ZIP_PATTERN, filename) else open
             with openFunc(filename, 'rb') as f:
                 if verbose:
@@ -199,7 +199,7 @@ class CsvDatabase(object):
         # in the instances dict, return that item. Saves having to pass
         # the database path repeatedly if there's only one database in use.
         if pathname is None and len(instances) == 1:
-            values = instances.values()
+            values = list(instances.values())
             return values[0]
 
         pathname = os.path.normpath(pathname)
