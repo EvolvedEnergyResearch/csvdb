@@ -136,7 +136,7 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
-                 compile_sensitivities=False):
+                 compile_sensitivities=False,filter_columns=[]):
         """
         Initialize a CsvDatabase.
 
@@ -156,6 +156,7 @@ class CsvDatabase(object):
         self.mapped_cols = mapped_cols
         # maps table names => file names under the database root folder
         self.file_map = {}
+        self.filter_columns = filter_columns
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -176,7 +177,7 @@ class CsvDatabase(object):
             table_names = self.tables_with_classes()
             for name in table_names:
                 if name not in tables_to_not_load:
-                    self.get_table(name)
+                    self.get_table(name,filter_columns=self.filter_columns)
 
     @classmethod
     def clear_cached_database(cls):
@@ -187,6 +188,7 @@ class CsvDatabase(object):
         """
         Return the singleton CsvDatabase instance for the given pathname.
 
+        :rtype:
         :param pathname: (str) the path to the CSV database directory.
         :param kwargs: On first call, accepts arguments to the CsvDatabase
            __init__ method. Subsequent calls return the cached instance,
@@ -218,12 +220,12 @@ class CsvDatabase(object):
     def is_table(self, name):
         return self.table_names.get(name, False)
 
-    def get_table(self, name):
+    def get_table(self, name, filter_columns=[]):
         try:
             return self.table_objs[name]
         except KeyError:
             metadata = self.metadata.get(name, CsvMetadata(name))
-            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols)
+            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols,filter_columns=filter_columns)
             self.table_objs[name] = tbl
             return tbl
 

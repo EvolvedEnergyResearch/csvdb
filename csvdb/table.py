@@ -22,7 +22,7 @@ def clean_col_name(name):
     return re.sub(_bad_chars, '_', name)
 
 class CsvTable(object):
-    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities, mapped_cols=None):
+    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities, mapped_cols=None, filter_columns=[]):
         self.db = db
         self.name = tbl_name
         self.metadata = metadata
@@ -30,7 +30,7 @@ class CsvTable(object):
         self.compile_sensitivities = compile_sensitivities
         self.data = None
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
-
+        self.filter_columns = filter_columns
         self.data_class = None
         self.load_all()
 
@@ -44,7 +44,7 @@ class CsvTable(object):
 
         key_col    = md.key_col
         df_cols    = md.df_cols
-        drop_cols  = md.drop_cols
+        drop_cols  = md.drop_cols + self.filter_columns
 
         if not md.attr_cols:
             non_attr_cols = df_cols + drop_cols
@@ -65,11 +65,11 @@ class CsvTable(object):
         if md.data_table:
             return
         tbl_name = self.name
-        all_cols = self.get_columns()
+        all_cols =  [x for x in self.get_columns() if x not in self.filter_columns]
         md.key_col = None
         md.df_value_col = ['value']
         md.df_cols = all_cols
-        md.drop_cols = None
+        md.drop_cols = self.filter_columns
         md.attr_cols = [col for col in all_cols if col not in md.df_value_col]
 
     def _compute_sensitivity_metadata(self):
@@ -151,7 +151,9 @@ class CsvTable(object):
                 df = df.rename(columns={filter: 'filter{}'.format(filter_num+1)})
             df = df.drop_duplicates()
         self.data = df = df.where(pd.notnull(df), other=None)
-
+        drop_cols = [x for x in self.filter_columns if x in self.data.columns]
+        for x in drop_cols:
+            self.data.drop(x,axis=1,inplace=True)
         rows, cols = df.shape
         if Verbose:
             print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
