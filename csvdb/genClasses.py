@@ -77,9 +77,13 @@ class ClassGenerator(object):
         write_class_var('_df_cols', df_cols)
         write_class_var('_df_filters', df_filters)
 
+        # We try 2 variants of data table names before giving up
         data_table = table + 'Data'
         if data_table not in self.all_tables:
-            data_table = ''
+            data_table = table + 'NewData'
+            if data_table not in self.all_tables:
+                data_table = ''
+
         stream.write('    _data_table_name = {!r}\n'.format(str(data_table) or None))
         stream.write('\n')
 

@@ -49,8 +49,8 @@ def str_to_id(text):
     id = obj.store(text)
     return id
 
-def get_database():
-    return CsvDatabase.get_database(None)
+def get_database(pathname=None):
+    return CsvDatabase.get_database(pathname)
 
 # Deprecated?
 # def _isListOfNoneOrNan(obj):
@@ -81,6 +81,7 @@ class DataObject(object):
         self._scenario = scenario
         self._key = key
         self._timeseries = None          # dataframe or None
+        self.raw_values = None
 
     def __str__(self):
         return "<{} {}='{}'>".format(self.__class__.__name__, self._key_col, self._key)
@@ -117,6 +118,20 @@ class DataObject(object):
         except KeyError:                # TODO: looks like this predates setting _timeseries = None in __init__
             return None
 
+    def add_sensitivity_filter(self, key, filters): # This function is overwritten in EP with a version that does something
+        return filters
+
+    def timeseries_cleanup(self, timeseries): # This function is overwritten in EP with a slightly different version
+        db = get_database()
+        tbl_name = self._table_name
+        tbl = db.get_table(tbl_name)
+        md = tbl.metadata
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
+        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
+        timeseries = timeseries.set_index(index_cols).sort_index()
+        return timeseries
+
     def load_timeseries(self, key, **filters):
         db = get_database()
         tbl_name = self._table_name
@@ -126,11 +141,15 @@ class DataObject(object):
         df = tbl.data
         # Process key match as another filter
         filters[md.key_col] = key
+        self.add_sensitivity_filter(key, filters)
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
             logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            self._has_data = False
             return None
+        else:
+            self._has_data = True
 
         # Find the unique sets of attributes for which to create a DF
         attrs = matches[md.attr_cols]
@@ -143,29 +162,42 @@ class DataObject(object):
             raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[[md.key_col]+columns_with_non_unique_values]))
 
         timeseries = matches[md.df_cols]
-        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
-        # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
-        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
-        timeseries = timeseries.set_index(index_cols).sort_index()
-        #todo improve this try/except
-        try:
-            timeseries = timeseries.astype(float)
-        except:
-            pass
-        if 'gau' in timeseries.index.names:
-            timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+        if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
+            timeseries = self.timeseries_cleanup(timeseries)
+            #todo improve this try/except
+            try:
+                timeseries = timeseries.astype(float)
+            except:
+                pass
+            if 'gau' in timeseries.index.names:
+                assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+            if 'oth_1' in timeseries.index.names:
+                assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
+            if 'oth_2' in timeseries.index.names:
+                assert attrs['other_index_2'].values[0] is not None, "table {}, key {}, other_index_2 can't be None when oth_2 index exists".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['other_index_2'].values[0], level='oth_2')
 
-        duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
-        if any(duplicate_index):
-            raise CsvdbException("'{}' in table '{}': duplicate indices found: \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+            duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
+            if any(duplicate_index):
+                print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
-        self._timeseries = timeseries.copy(deep=True)
+            # we save the same data to two variables for ease of code interchangeability
+            self._timeseries = timeseries.copy(deep=True) # RIO uses _timeseries
+            self.raw_values = self._timeseries # EP uses raw_values
+        else:
+            self._timeseries = self.raw_values = None
+
         row = attrs
 
         tup = tuple(row.values[0])
         return tup
 
     def init_from_db(self, key, scenario, **filters):
+        if key is None:
+            return
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
@@ -184,7 +216,10 @@ class DataObject(object):
                     tup = self.__class__.get_row(key, scenario=scenario, **filters)
 
             if tup is None:
+                self._has_data = False
                 tup = [None] * len(cols)
+            else:
+                self._has_data = True
 
             # filter out the non-attribute columns
             tup = [t for t, c in zip(tup, cols) if c in md.attr_cols]
