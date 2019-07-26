@@ -347,7 +347,7 @@ def clean_tables(db, update, skip_dirs=None):
 
 
 def validate_db(dbdir, validationdir, update, metadata):
-    shapes_file_map = ShapeDataMgr.create_filemap(dbdir)
+    shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
     shape_tables = shapes_file_map.keys()
 
     metadata += [CsvMetadata(tbl_name, data_table=True) for tbl_name in shape_tables]

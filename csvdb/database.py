@@ -30,6 +30,7 @@ pd.set_option('display.width', 200)
 
 # case-insensitive match of *.csv and *.csv.gz files
 CSV_PATTERN = re.compile('.*\.csv(\.gz)?$', re.IGNORECASE)
+CSV_DIR_PATTERN = '.csvd'
 
 # case-insensitive match of *.gz files
 ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
@@ -78,7 +79,7 @@ class ShapeDataMgr(object):
         self.db_path = db_path
         self.tbl_name = SHAPE_DIR   # Deprecated?
         self.slices = {}            # maps shape name to DF containing that shape's data rows
-        self.file_map = self.create_filemap(db_path)
+        self.file_map = self.create_file_map(db_path)
         self.compile_sensitivities = compile_sensitivities
 
     def load_all(self, verbose=True):
@@ -86,23 +87,28 @@ class ShapeDataMgr(object):
             return self.slices
 
         for shape_name, filename in self.file_map.iteritems():
-            openFunc = gzip.open if re.match(ZIP_PATTERN, filename) else open
-            with openFunc(filename, 'rb') as f:
-                if verbose:
-                    print("Reading shape data for {}".format(shape_name))
-                df = pd.read_csv(f, index_col=None)
-                if SENSITIVITY_COL in df.columns:
-                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
-                if self.compile_sensitivities:
+            if type(filename) is not list:
+                filename = [filename]
+            dfs = []
+            for fn in filename:
+                openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
+                with openFunc(fn, 'rb') as f:
+                    if verbose:
+                        print("Reading shape data for {}".format(shape_name))
+                    df = pd.read_csv(f, index_col=None)
                     if SENSITIVITY_COL in df.columns:
-                        df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
-                        df['name'] = shape_name
-                    else:
-                        df = None
-                self.slices[shape_name] = df
+                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
+                    if self.compile_sensitivities:
+                        if SENSITIVITY_COL in df.columns:
+                            df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
+                            df['name'] = shape_name
+                        else:
+                            df = None
+                    dfs.append(df)
+            self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
 
     @classmethod
-    def create_filemap(cls, db_path):
+    def create_file_map(cls, db_path):
         """
         ShapeData is stored in gzipped slices of original 3.5 GB table.
         The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
@@ -118,6 +124,17 @@ class ShapeDataMgr(object):
             basename = os.path.basename(filename)
             shape_name = basename.split('.')[0]
             file_map[shape_name] = filename
+
+        # csv directory files get appended together when they are read in
+        shape_csv_dirs = glob(os.path.join(shape_dir, '*.csvd'))
+
+        for shape_csv_dir in shape_csv_dirs:
+            shape_files_zip = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv.gz'))
+            shape_files_csv = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv'))
+            basename = os.path.basename(shape_csv_dir)
+            shape_name = basename.split('.')[0]
+            if len(shape_files_zip + shape_files_csv):
+                file_map[shape_name] = shape_files_zip + shape_files_csv
 
         return file_map
 
@@ -136,7 +153,7 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
-                 compile_sensitivities=False,filter_columns=[]):
+                 compile_sensitivities=False,filter_columns=None):
         """
         Initialize a CsvDatabase.
 
@@ -156,7 +173,7 @@ class CsvDatabase(object):
         self.mapped_cols = mapped_cols
         # maps table names => file names under the database root folder
         self.file_map = {}
-        self.filter_columns = filter_columns
+        self.filter_columns = filter_columns or []
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -220,12 +237,12 @@ class CsvDatabase(object):
     def is_table(self, name):
         return self.table_names.get(name, False)
 
-    def get_table(self, name, filter_columns=[]):
+    def get_table(self, name, filter_columns=None):
         try:
             return self.table_objs[name]
         except KeyError:
             metadata = self.metadata.get(name, CsvMetadata(name))
-            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols,filter_columns=filter_columns)
+            tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols, filter_columns=filter_columns)
             self.table_objs[name] = tbl
             return tbl
 
@@ -290,16 +307,19 @@ class CsvDatabase(object):
             raise CsvdbException('Database path "{}" is not a directory'.format(pathname))
 
         for dirpath, dirnames, filenames in os.walk(pathname, topdown=False):
-            if os.path.basename(dirpath) == SHAPE_DIR:
+            if SHAPE_DIR in dirpath:
                 continue
 
-            for filename in filenames:
-                basename = os.path.basename(filename)
-                if re.match(CSV_PATTERN, basename):
-                    tbl_name = basename.split('.')[0]
-                    self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
-
-        # print("Found {} .CSV files for {}".format(len(self.file_map), pathname))
+            if os.path.basename(dirpath)[-5:] == CSV_DIR_PATTERN:
+                # we have a directory that should be treated like one csv file
+                tbl_name = os.path.basename(dirpath).split('.')[0]
+                self.file_map[tbl_name] = [os.path.abspath(os.path.join(dirpath, filename)) for filename in filenames]
+            else:
+                for filename in filenames:
+                    basename = os.path.basename(filename)
+                    if re.match(CSV_PATTERN, basename):
+                        tbl_name = basename.split('.')[0]
+                        self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 
 
     def file_for_table(self, tbl_name):

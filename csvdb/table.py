@@ -22,7 +22,7 @@ def clean_col_name(name):
     return re.sub(_bad_chars, '_', name)
 
 class CsvTable(object):
-    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities, mapped_cols=None, filter_columns=[]):
+    def __init__(self, db, tbl_name, metadata, output_table, compile_sensitivities, mapped_cols=None, filter_columns=None):
         self.db = db
         self.name = tbl_name
         self.metadata = metadata
@@ -30,7 +30,7 @@ class CsvTable(object):
         self.compile_sensitivities = compile_sensitivities
         self.data = None
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
-        self.filter_columns = filter_columns
+        self.filter_columns = filter_columns or []
         self.data_class = None
         self.load_all()
 
@@ -102,9 +102,18 @@ class CsvTable(object):
         # Avoid reading empty strings as nan (sensitivity column must be None)
         converters = {col: str for col in self.str_cols} if self.str_cols else {}
 
-        openFunc = gzip.open if filename.endswith('.gz') else open
-        with openFunc(filename, 'rb') as f:
-            self.data = df = pd.read_csv(f, index_col=None, converters=converters, na_values='')
+        if type(filename) is not list:
+            filename = [filename]
+
+        dfs = []
+        for fn in filename:
+            openFunc = gzip.open if fn.endswith('.gz') else open
+            with openFunc(fn, 'rb') as f:
+                dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values=''))
+        unique_columns = set([tuple(df.columns) for df in dfs])
+        if len(unique_columns)>1:
+            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns))
+        self.data = df = pd.concat(dfs)
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
