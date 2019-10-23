@@ -3,12 +3,13 @@ import click
 from csvdb import CsvMetadata, validate_db, ValidationDataError
 import importlib
 import pdb
+from RIO.riodb.rio_db_loader import _RioMetadata
 
-# TODO: need to generalize this. Store this info in the metadata.txt file? Could have a
-# TODO: special case for rows that start with '_', e.g., "_data_tables,GEOGRAPHIES,..."
-_DataTables = ['GEOGRAPHIES', 'GEOGRAPHIES_SPATIAL_JOIN', 'CURRENCY_CONVERSION', 'INFLATION_CONVERSION']
-
-_DbMetadata = [CsvMetadata(name, data_table=True) for name in _DataTables]
+# # TODO: need to generalize this. Store this info in the metadata.txt file? Could have a
+# # TODO: special case for rows that start with '_', e.g., "_data_tables,GEOGRAPHIES,..."
+# _DataTables = ['GEOGRAPHIES', 'GEOGRAPHIES_SPATIAL_JOIN', 'CURRENCY_CONVERSION', 'INFLATION_CONVERSION']
+#
+# _DbMetadata = [CsvMetadata(name, data_table=True) for name in _DataTables]
 
 @click.command()
 @click.argument('dbdir', type=click.Path(exists=True))      # Positional argument
@@ -17,7 +18,7 @@ _DbMetadata = [CsvMetadata(name, data_table=True) for name in _DataTables]
 def main(dbdir, package, update):
     try:
         package = importlib.import_module(package)
-        validate_db(dbdir, package.__path__[0], update, _DbMetadata)
+        validate_db(dbdir, package.__path__[0], update, _RioMetadata)
     except ValidationDataError as e:
         print(e)
 

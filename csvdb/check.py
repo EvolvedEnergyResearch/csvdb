@@ -255,6 +255,8 @@ def check_tables(db, col_md):
                     print("Errors in {}.{}:".format(tblname, colname))
                     for i, value in errors:
                         if isinstance(validation, list):
+                            if len(validation)>5:
+                                validation = validation[:2] + ["..."] + validation[-2:]
                             print("    Value '{}' at line {} not found in allowable list {}".format(value, i+2, validation))   # +1 for header; +1 to translate 0 offset
                         else:
                             print("    Value '{}' at line {} failed data type check with function {}".format(value, i + 2, validation))
@@ -265,7 +267,7 @@ def list_tables(db_pathname, skip_dirs=None):
     tables = []
 
     for dirpath, dirnames, filenames in os.walk(db_pathname, topdown=False):
-        if skip_dirs and os.path.basename(dirpath) in skip_dirs:
+        if skip_dirs and skip_dirs in dirpath:
             continue
 
         for filename in filenames:
