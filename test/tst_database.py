@@ -3,6 +3,10 @@ from csvdb import CsvMetadata, CsvDatabase
 _Metadata = [
     CsvMetadata('ONE_COL'),
 
+    CsvMetadata('EMISSIONS_PRICE',
+                data_table=True,
+                has_key_col=False),
+
     CsvMetadata('GeographiesSpatialJoin',
                 data_table=True),
 

@@ -63,6 +63,9 @@ def main():
     geo = db.get_table("GeographiesSpatialJoin")
     print("\nGeographiesSpatialJoin.data[1:10, 1:10]\n", geo.data.iloc[1:10, 1:10])
 
+    # Test data table without a key column
+    emiss_price = db.get_table("EMISSIONS_PRICE")
+
     # Get the raw data table objects
     tech_main  = db.get_table("TECH_MAIN")
     print("\nTECH_MAIN\n", tech_main.data)

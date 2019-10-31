@@ -36,12 +36,12 @@ CSV_DIR_PATTERN = '.csvd'
 ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
 
 class CsvMetadata(object):
-    __slots__ = ['table_name', 'data_table', 'key_col', 'attr_cols',
+    __slots__ = ['table_name', 'data_table', 'key_col', 'has_key_col', 'attr_cols',
                  'df_cols', 'df_value_col', 'df_filters', 'drop_cols', 'lowcase_cols']
 
-    def __init__(self, table_name, data_table=False, key_col=None, attr_cols=None,
-                 df_cols=None, df_value_col=None, df_filters=None, drop_cols=None,
-                 lowcase_cols=None):
+    def __init__(self, table_name, data_table=False, key_col=None, has_key_col=True,
+                 attr_cols=None, df_cols=None, df_value_col=None, df_filters=None,
+                 drop_cols=None, lowcase_cols=None):
         """
         A simple struct to house table metadata. Attribute columns (`attr_cols`)
         become instance variables in generated classes. Dataframe columns (`df_cols`)
@@ -56,10 +56,11 @@ class CsvMetadata(object):
         if data_table:
             # ignore all other parameters, if any, to constructor
             self.key_col = None
+            self.has_key_col = False
             self.df_filters = self.df_cols = self.attr_cols = self.drop_cols = self.lowcase_cols = []
             self.df_value_col = []
         else:
-            self.key_col      = key_col or 'name'
+            self.key_col      = key_col or ('name' if has_key_col else None)
             self.df_filters   = df_filters or []
             self.df_cols      = df_cols or []
             self.df_value_col = df_value_col or ['value']
