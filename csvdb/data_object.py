@@ -52,14 +52,6 @@ def str_to_id(text):
 def get_database(pathname=None):
     return CsvDatabase.get_database(pathname)
 
-# Deprecated?
-# def _isListOfNoneOrNan(obj):
-#     if len(obj) != 1:
-#         return False
-#
-#     item = obj[0]
-#     return item is None or (isinstance(item, float) and np.isnan(item))
-
 
 class DataObject(object):
     # dict keyed by class object; value is list of instances of the class
@@ -251,31 +243,32 @@ class DataObject(object):
         if scenario != self._scenario:
             raise CsvdbException("DataObject: mismatch between caller's scenario ({}) and self._scenario ({})".format(scenario, self._scenario))
 
+    # Deprecated
     # TODO: Imported from EP. Not sure if it will remain.
-    # Caller gets mapped cols via "from .text_mappings import MappedCols"
-    def map_strings(self, df, mapped_cols, drop_str_cols=True):
-        tbl_name = self._data_table_name
-
-        strmap = StringMap.getInstance()
-        str_cols = mapped_cols.get(tbl_name, [])
-
-        for col in str_cols:
-            # Ensure that all values are in the StringMap
-            values = df[col].unique()
-            for value in values:
-                strmap.store(value)
-
-            # mapped column "foo" becomes "foo_id"
-            id_col = col + '_id'
-
-            # Force string cols to str and replace 'nan' with None
-            df[col] = df[col].astype(str)
-            df.loc[df[col] == 'nan', col] = None
-
-            # create a column with integer ids
-            df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
-
-        if drop_str_cols:
-            df.drop(str_cols, axis=1, inplace=True)
-
-        return df
+    # # Caller gets mapped cols via "from .text_mappings import MappedCols"
+    # def map_strings(self, df, mapped_cols, drop_str_cols=True):
+    #     tbl_name = self._data_table_name
+    #
+    #     strmap = StringMap.getInstance()
+    #     str_cols = mapped_cols.get(tbl_name, [])
+    #
+    #     for col in str_cols:
+    #         # Ensure that all values are in the StringMap
+    #         values = df[col].unique()
+    #         for value in values:
+    #             strmap.store(value)
+    #
+    #         # mapped column "foo" becomes "foo_id"
+    #         id_col = col + '_id'
+    #
+    #         # Force string cols to str and replace 'nan' with None
+    #         df[col] = df[col].astype(str)
+    #         df.loc[df[col] == 'nan', col] = None
+    #
+    #         # create a column with integer ids
+    #         df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
+    #
+    #     if drop_str_cols:
+    #         df.drop(str_cols, axis=1, inplace=True)
+    #
+    #     return df

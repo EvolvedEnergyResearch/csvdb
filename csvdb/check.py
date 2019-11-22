@@ -2,13 +2,12 @@
 from __future__ import print_function
 from glob import glob
 import gzip
-import pandas as pd
 import os
 import types
 import re
 import csv
 from .database import CsvDatabase, CsvMetadata, ShapeDataMgr
-from .error import CsvdbException, ValidationDataError
+from .error import CsvdbException, ValidationDataError, ValidationFormatError
 import pdb
 
 VALIDATION_FILE = 'VALIDATION.txt'
@@ -23,7 +22,7 @@ _Bool  = _True + _False
 def check_bool(series):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if isinstance(value, types.StringTypes) and value.lower() not in _Bool:
             bad.append((i, value))
 
@@ -32,7 +31,7 @@ def check_bool(series):
 def check_bool_or_empty(series):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if isinstance(value, types.StringTypes) and value.lower() not in _Bool and value is not None:
             bad.append((i, value))
 
@@ -41,7 +40,7 @@ def check_bool_or_empty(series):
 def check_type(series, aType, allow_null=False):
     bad = []
 
-    for i, value in series.iteritems():
+    for i, value in series.items():
         if value is None and allow_null:
             continue
         try:
@@ -106,6 +105,76 @@ def get_validation_file_path(validationdir):
             return os.path.join(dirpath, VALIDATION_FILE)
     raise ValueError("Unable to find validation file {} within package {}".format(VALIDATION_FILE, validationdir))
 
+class ValidationInfo(object):
+    def __init__(self, db, row):
+        self.col_type = row['type'].lower()
+        self.type_func = _check_fns[self.col_type] if self.col_type else None
+        self.target_name = row['table_name']
+        self.target_col = row['table_column']
+        self.folder = row['folder']
+        self.ref_tbl = ref_tbl = row['referenced_table']
+        self.ref_col = ref_col = row['referenced_field']
+        extra_values = row['additional_valid_inputs']
+
+        filename = ''  # place holder for location of validation.csv
+
+        self.values = []
+
+        if self.folder:
+            pattern = os.path.join(db.pathname, self.folder, '*')
+            paths = glob(pattern)
+            self.values = map(extract_name, paths)
+
+        elif ref_tbl and ref_col:
+            try:
+                tbl = db.get_table(ref_tbl)
+            except CsvdbException:
+                raise ValidationFormatError(filename, "unknown table '{}'".format(ref_tbl))
+
+            if ref_col not in tbl.data.columns:
+                raise ValidationFormatError(filename, "unknown column '{}' in table '{}'".format(ref_col, ref_tbl))
+
+            self.values = list(tbl.data[ref_col].unique())
+
+            # TODO: handle this in metadata?
+            if ref_col == 'shape':
+                self.values.append(None)
+
+        if extra_values:
+            # parse / validate numbers
+            if all(map(str.isdigit, extra_values)):
+                extra_values = map(int, extra_values)
+            elif all(map(is_float, extra_values)):
+                extra_values = map(float, extra_values)
+
+            self.values += extra_values
+
+
+def validation_dict(db, val_list):
+    value_dict = {}     # maps (tbl, col) tuples to the ValidationInfo obj, checking for duplicates
+
+    for row_dict in val_list:
+        obj = ValidationInfo(db, row_dict)
+
+        filename = '' # placeholder
+        key = (obj.ref_table, obj.ref_col)
+
+        # Check for duplicates
+        if key in value_dict:
+            key_str = '{}.{}'.format(key[0], key[1]) if key[0] else key[1]
+            raise ValidationFormatError(filename, "duplicate entry for column '{}'".format(key_str))
+
+        value_dict[key] = obj
+
+    return value_dict
+
+#
+# TODO: Separate out the parsing of validation.txt from the processing of the data,
+# TODO: since we're now reading this (and more) info from validation.csv, which is
+# TODO: parsed and passed as a list of row dicts to validate_db().
+#
+# Deprecated
+#
 def read_metadata(db, validationdir):
     """
     Reads the CsvDatabase validation metadata from the file 'validation.txt' found
@@ -131,7 +200,6 @@ def read_metadata(db, validationdir):
             raise ValidationDataError(filename, num, "duplicate entry for column '{}'".format(colname))
 
         value_dict[colname] = values
-
 
     for num, line in lines:
         if line:        # ignore blank lines
@@ -259,7 +327,7 @@ def check_tables(db, col_md):
                                 validation = validation[:2] + ["..."] + validation[-2:]
                             print("    Value '{}' at line {} not found in allowable list {}".format(value, i+2, validation))   # +1 for header; +1 to translate 0 offset
                         else:
-                            print("    Value '{}' at line {} failed data type check with function {}".format(value, i + 2, validation))
+                            print("    Value '{}' at line {} failed data type check with function {}".format(value, i+2, validation))
 
     return isClean
 
@@ -278,17 +346,29 @@ def list_tables(db_pathname, skip_dirs=None):
 
     return tables
 
-def clean_tables(db, update, skip_dirs=None):
+def clean_tables(db, update, skip_dirs=None, trim_blanks=True,
+                 drop_empty_rows=True, drop_empty_cols=True):
     """
-    Fix common errors in CSV files, including: removing surrounding blanks
-    from column names and data values, dropping columns with empty names and
-    values, AND??
+    Fix common errors in CSV files, according the the keyword args given.
+    Options include trim_blanks => remove blanks surrounding column names
+    and data values; drop_empty_cols => drop columns with empty names and
+    values; drop_empty_rows => drop rows with all col values empty. By
+    default, all options are True.
 
     :param db: (CsvDatabase) a CsvDatabase instance
+    :param update: (bool) whether to write modifications back to the
+        table (CSV) file
     :param skip_dirs: (list of str) directories to skip when cleaning
+    :param trim_blanks: (bool) whether to trim blanks surrounding column
+        names and data values.
+    :param drop_empty_rows: (bool) whether to drop empty rows.
+    :param drop_empty_cols: (bool) whether to drop empty columns.
     :return: (bool) whether any errors where found and fixed.
     """
+    counts = {'empty_rows' : 0, 'empty_cols' : 0, 'trimmed_blanks' : 0}
+
     any_modified = False
+
     for tblname in list_tables(db.pathname, skip_dirs=skip_dirs):
         modified = False
         pathname = db.file_map[tblname]
@@ -303,32 +383,35 @@ def clean_tables(db, update, skip_dirs=None):
         rows, columns = len(data), len(data[0])
         # print("Table: {} ({:,} rows, {} cols)".format(tblname, rows, columns))
 
-        # any rows that are all blanks get dropped
-        data = [row for row in data if not all([val=='' for val in row])]
-        if len(data)<rows:
-            print("   Removing {} blank rows from table {}".format(rows-len(data), tblname))
-            modified = True
+        if drop_empty_rows:
+            # any rows that are all blanks get dropped
+            data = [row for row in data if not all([val=='' for val in row])]
+            if len(data) < rows:
+                counts['empty_rows'] += 1
+                modified = True
 
-        # transpose list to make it easy to check the columns for blanks
-        data = map(list, zip(*data))
+        if drop_empty_cols:
+            # transpose list to make it easy to check the columns for blanks
+            data = map(list, zip(*data))
 
-        # any rows that are all blanks get dropped
-        data = [row for row in data if not all([val=='' for val in row])]
-        if len(data)<columns:
-            print("   Removing {} empty columns from table {}".format(columns-len(data), tblname))
-            modified = True
+            # any cols (transposed to rows) that are all blanks get dropped
+            data = [row for row in data if not all([val=='' for val in row])]
+            if len(data) < columns:
+                counts['empty_cols'] += 1
+                modified = True
 
-        # transpose back to the origional data shape
-        data = map(list, zip(*data))
+            # transpose back to the original data shape
+            data = map(list, zip(*data))
 
-        # replace any strings that have extra spaces
-        for row_num, row in enumerate(data):
-            for col_num, val in enumerate(row):
-                stripped = re.sub(SPACES_PATTERN, ' ', val.strip())
-                if val != stripped:
-                    print("   Replacing string '{}' with '{}'".format(val, stripped))
-                    data[row_num][col_num] = stripped
-                    modified = True
+        if trim_blanks:
+            # replace any strings that have extra spaces
+            for row_num, row in enumerate(data):
+                for col_num, val in enumerate(row):
+                    stripped = re.sub(SPACES_PATTERN, ' ', val.strip())
+                    if val != stripped:
+                        counts['trimmed_blanks'] += 1
+                        data[row_num][col_num] = stripped
+                        modified = True
 
         if modified:
             any_modified = True
@@ -340,15 +423,25 @@ def clean_tables(db, update, skip_dirs=None):
                     for row in data:
                         csvwriter.writerow(row)
     if any_modified:
+        def report(msg, key):
+            value = counts[key]
+            if value:
+                print('  ', msg.format(value))
+
+        report("Removed empty rows from {} tables", 'empty_rows')
+        report("Removed empty cols from {} tables", 'empty_cols')
+        report("Trimmed blanks from {} values", 'trimmed_blanks')
+
         if update:
             print("Database errors found and fixed - files have been modified")
         else:
             print("Database errors found but update=False - no files were modified")
     else:
-        print("Finished cleaning comming db errors with no issues found")
+        print("Finished cleaning common db errors with no issues found")
 
 
-def validate_db(dbdir, validationdir, update, metadata):
+def validate_db(dbdir, validationdir, val_list, update, metadata,
+                trim_blanks=True, drop_empty_rows=True, drop_empty_cols=True):
     shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
     shape_tables = shapes_file_map.keys()
 
@@ -356,7 +449,8 @@ def validate_db(dbdir, validationdir, update, metadata):
     db = CsvDatabase.get_database(dbdir, load=False, metadata=metadata)
 
     print("Cleaning common errors in db files")
-    clean_tables(db, update, skip_dirs='ShapeData')
+    clean_tables(db, update, skip_dirs='ShapeData', trim_blanks=trim_blanks,
+                 drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols)
 
     col_md = read_metadata(db, validationdir)
 

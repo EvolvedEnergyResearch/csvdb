@@ -86,7 +86,7 @@ class ShapeDataMgr(object):
         if self.slices:
             return self.slices
 
-        for shape_name, filename in self.file_map.iteritems():
+        for shape_name, filename in self.file_map.items():
             if type(filename) is not list:
                 filename = [filename]
             dfs = []
@@ -152,8 +152,8 @@ class CsvDatabase(object):
     instances = {}  # maps normalized database pathname to CsvDatabase instances
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
-                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None, output_tables=False,
-                 compile_sensitivities=False,filter_columns=None):
+                 tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
+                 output_tables=False, compile_sensitivities=False, filter_columns=None):
         """
         Initialize a CsvDatabase.
 
@@ -165,7 +165,9 @@ class CsvDatabase(object):
            By default, all CSV files found in the database directory are assumed to require class instances
            for each row of data.
         :param tables_to_ignore: (list of str) basenames of CSV files that should simply be ignored.
-        :param data_tables: (list of str) names of tables that should be treated as "data" tables.
+        :param output_tables: (bool)
+        :param compile_sensitivities: (bool)
+        :param filter_columns: (list of str)
         """
         self.pathname = pathname
         self.output_tables = output_tables

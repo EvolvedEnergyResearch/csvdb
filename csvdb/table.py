@@ -15,7 +15,7 @@ SENSITIVITY_COL = 'sensitivity'
 
 Verbose = False
 
-_bad_chars = re.compile('[\.:\ ]+')
+_bad_chars = re.compile('[.: ]+')
 
 def clean_col_name(name):
     'Replace problematic chars in column names with underscores'
@@ -42,9 +42,11 @@ class CsvTable(object):
         tbl_name = self.name
         all_cols = self.get_columns()
 
-        key_col    = md.key_col
-        df_cols    = md.df_cols
-        drop_cols  = md.drop_cols + self.filter_columns
+        key_col   = md.key_col
+        df_cols   = md.df_cols
+        drop_cols = md.drop_cols + self.filter_columns
+        attr_cols = []
+        non_attr_cols = []
 
         if not md.attr_cols:
             non_attr_cols = df_cols + drop_cols

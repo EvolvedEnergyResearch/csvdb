@@ -48,3 +48,8 @@ class ValidationDataError(Exception):
     def __init__(self, path, linenum, msg):
         msg = "Syntax error in {} at line {}: {}".format(path, linenum+1, msg)
         super(ValidationDataError, self).__init__(msg)
+
+class ValidationFormatError(Exception):
+    def __init__(self, path, msg):
+        msg = "Format error in {}: {}".format(path, msg)
+        super(ValidationFormatError, self).__init__(msg)
