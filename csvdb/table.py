@@ -33,11 +33,7 @@ class CsvTable(object):
         self.filter_columns = filter_columns or []
         self.data_class = None
 
-        # TBD: remove the try/except after debugging
-        try:
-            self.load_all()
-        except CsvdbException as e:
-            print(e)
+        self.load_all()
 
     def _compute_metadata(self):
         md = self.metadata

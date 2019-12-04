@@ -193,15 +193,13 @@ def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empt
         try:
             package = importlib.import_module(validate)
             val_csv = os.path.join(package.__path__[0], 'etc',  'validation.csv')
-
+            metadata = package.get_metadata()
             cls = package.database_class()
+
             db = cls(pathname=dbdir)
 
             # Read and parse validation.csv
             val_dict = read_validation_csv(db, val_csv)
-
-            # TODO: add a get_metadata() function to energyPathways and master of RIO.riodb.__init__ (it's in RP's local copy)
-            metadata = package.get_metadata()
 
             validate_db(dbdir, val_dict, update_csv, metadata, trim_blanks=trim_blanks,
                         drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols,

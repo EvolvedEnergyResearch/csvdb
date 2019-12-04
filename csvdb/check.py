@@ -88,8 +88,6 @@ COL_NAMES = ['table_name', 'column_name', 'not_null', 'linked_column', 'dtype', 
 COL_SET = set(COL_NAMES)
 
 def read_validation_csv(db, csvfile):
-    from csvdb.check import ValidationInfo
-
     with open(csvfile, 'r') as f:       # , encoding='utf-8-sig'
         rows = [row for row in csv.reader(f)]
 
@@ -171,22 +169,3 @@ class ValidationInfo(object):
                 extra_values = map(float, extra_values)
 
             self.values += extra_values
-
-# Deprecated, probably
-# def validation_dict(db, val_list):
-#     value_dict = {}     # maps (tbl, col) tuples to the ValidationInfo obj, checking for duplicates
-#
-#     for row_dict in val_list:
-#         obj = ValidationInfo(db, row_dict)
-#
-#         filename = '' # placeholder
-#         key = (obj.ref_table, obj.ref_col)
-#
-#         # Check for duplicates
-#         if key in value_dict:
-#             key_str = '{}.{}'.format(key[0], key[1]) if key[0] else key[1]
-#             raise ValidationFormatError(filename, "duplicate entry for column '{}'".format(key_str))
-#
-#         value_dict[key] = obj
-#
-#     return value_dict

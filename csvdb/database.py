@@ -348,7 +348,6 @@ class CsvDatabase(object):
 
         return bad
 
-    # TBD: store val_dict when loading database, or load it on-the-fly?
     def check_table(self, tbl_name, val_dict, check_unique=True):
         """
         Check whether the CsvDatabase tables (CSV files) are clean.
