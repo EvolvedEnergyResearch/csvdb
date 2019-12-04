@@ -78,7 +78,7 @@ class CsvTable(object):
         md = self.metadata
         if md.data_table:
             return
-        tbl_name = self.name
+        # tbl_name = self.name
         all_cols = self.get_columns()
         md.key_col = md.key_col
         md.df_value_col = ['sensitivity']

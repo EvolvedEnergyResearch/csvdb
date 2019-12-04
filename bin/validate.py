@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import click
-from collections import OrderedDict
-import csv
 import gzip
 import importlib
 import os
@@ -138,55 +136,12 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 
                 new.to_csv(abspath, index=None)
 
-# we have a set of valid inputs, but also want to allow null
-# we have a referenced table and referenced field, but also want to add additional valid options to it (less critical)
-# we have a foreign key constraint within the same table
-# we have a column that is not null if and when another column is not null (these are indicated by 'linked_column' == True)
-
-EXTRA_INPUTS = 'additional_valid_inputs'
-COL_NAMES = ['table_name', 'table_column', 'not_null', 'linked_column', 'dtype', 'folder',
-             'referenced_table', 'referenced_field', 'cascade_delete', 'comment', EXTRA_INPUTS]
-COL_SET = set(COL_NAMES)
-
-def read_validation_csv(dbdir):
-    csvfile = os.path.join(dbdir, 'validation.csv')
-
-    with open(csvfile, 'r') as f:       # , encoding='utf-8-sig'
-        rows = [row for row in csv.reader(f)]
-
-    # column names
-    names = [name for name in rows[0] if name]  # drop empty col names
-    count = len(names)
-
-    name_set = set(names)
-    if name_set != COL_SET:
-        if name_set - COL_SET:
-            raise ValidationFormatError(csvfile, 'Unknown validation columns: {}'.format(name_set - COL_SET))
-
-        if COL_SET - name_set:
-            raise ValidationFormatError(csvfile, 'Missing validation columns: {}'.format(COL_SET - name_set))
-
-    results = []
-
-    for row in rows[1:]:    # skip column names
-        named = row[:count] # named columns
-
-        rowdict = OrderedDict([(k, v) for (k, v) in zip(names, named)])
-
-        # convert "additional inputs" col into a list of strings of all non-empty values
-        # from trailing, unnamed columns. If initial value is '', convert to an empty
-        # list so value is always a list.
-        extra = rowdict[EXTRA_INPUTS]
-        rowdict[EXTRA_INPUTS] = ([extra] + [value for value in row[count:] if value != '']) if extra else []
-
-        results.append(rowdict)
-
-    return results
-
-
 @click.command()
 
 @click.argument('dbdir', type=click.Path(exists=True))      # Positional argument
+
+@click.option('--trim-blanks', '-b', is_flag=True, default=False,
+              help='Trim blanks surrounding column names and data values')
 
 @click.option('--delete', '-d', type=str, metavar='TABLE.COL=value',
               help='Delete a row from a table by key, including cascading deletes indicated in validation.csv. Argument must be of the form "TABLE.COL=value"')
@@ -206,32 +161,27 @@ def read_validation_csv(dbdir):
 @click.option('--create-schema', '-c', is_flag=True, default=False,
               help='Save schema info in schema-file')
 
-@click.option('--trim-blanks', '-t', is_flag=True, default=False,
-              help='Trim blanks surrounding column names and data values')
-
 @click.option('--update-schema', '-u', is_flag=True, default=False,
               help='Update schema from info in schema-file')
 
 @click.option('--run/--no-run', default=True,
               help='For update mode, whether to run the update or just show what would be done.')
 
-@click.option('--package', '-p', type=str, metavar='PACKAGE',
-              help='A Python package to load. Required when --validate option is used.')
-
 @click.option('--update-csv/--no-update-csv', default=False,
               help='Whether to write changed data back to the CSV files. Default is --no-update-csv.')
 
-@click.option('--validate', '-v', is_flag=True, default=False,
-              help='Validate the CSV database')
+@click.option('--check-unique', '-u', is_flag=True, default=False,
+              help='Verify that all tables with keys have unique key values in all rows')
+
+@click.option('--validate', '-v', type=str, metavar='PACKAGE',
+              help='Validate the named python package, which must contain validate.csv.')
 
 @click.option('--verbose', '-V', is_flag=True, default=False,
               help='Print confirmations of files whose schemas match')
 
-def main(dbdir, delete, drop_empty_rows, drop_empty_cols, drop_empty, schema_file, trim_blanks,
-         create_schema, update_schema, run, package, update_csv, validate, verbose):
-
-    if validate and not package:
-        raise ValidationUsageError("Package is required when --validate option is used.")
+def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empty, schema_file,
+         create_schema, update_schema, run, update_csv, check_unique, validate, verbose):
+    from csvdb.check import read_validation_csv
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
@@ -239,17 +189,23 @@ def main(dbdir, delete, drop_empty_rows, drop_empty_cols, drop_empty, schema_fil
     if drop_empty:
         drop_empty_rows = drop_empty_cols = True
 
-    # Read and parse validation.csv
-    # TODO: the old code searched the package directory for validation.txt. Do that for validation.csv?
-    val_list = read_validation_csv(dbdir)
-
-    if package:
+    if validate:
         try:
-            package = importlib.import_module(package)
-            # TODO: add get_metadata() function to energyPathways and master of RIO.riodb.__init__ (it's in RP's local copy)
-            validate_db(dbdir, package.__path__[0], val_list, update_csv,
-                        package.get_metadata(), trim_blanks=trim_blanks,
-                        drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols)
+            package = importlib.import_module(validate)
+            val_csv = os.path.join(package.__path__[0], 'etc',  'validation.csv')
+
+            cls = package.database_class()
+            db = cls(pathname=dbdir)
+
+            # Read and parse validation.csv
+            val_dict = read_validation_csv(db, val_csv)
+
+            # TODO: add a get_metadata() function to energyPathways and master of RIO.riodb.__init__ (it's in RP's local copy)
+            metadata = package.get_metadata()
+
+            validate_db(dbdir, val_dict, update_csv, metadata, trim_blanks=trim_blanks,
+                        drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols,
+                        check_unique=check_unique)
         except ValidationDataError as e:
             print(e)
 

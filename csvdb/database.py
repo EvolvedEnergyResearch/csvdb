@@ -22,15 +22,17 @@ import gzip
 import os
 import pandas as pd
 import re
-import pdb
 from .error import CsvdbException
 from .table import CsvTable, REF_SCENARIO, SENSITIVITY_COL
+import pdb
 
 pd.set_option('display.width', 200)
 
 # case-insensitive match of *.csv and *.csv.gz files
 CSV_PATTERN = re.compile('.*\.csv(\.gz)?$', re.IGNORECASE)
 CSV_DIR_PATTERN = '.csvd'
+
+SPACES_PATTERN = re.compile('\s\s+')
 
 # case-insensitive match of *.gz files
 ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
@@ -327,3 +329,308 @@ class CsvDatabase(object):
 
     def file_for_table(self, tbl_name):
         return self.file_map.get(tbl_name) or self.shapes.file_map.get(tbl_name)
+
+    @staticmethod
+    def check_value_list(series, values):
+        import types
+
+        bad = []
+
+        if len(series) == 0:
+            return None
+
+        values = [val.lower() if val and isinstance(val, types.StringTypes) else val for val in values]
+
+        for val in series.unique():
+            test_value = val.lower() if val and isinstance(val, types.StringTypes) else val
+            if test_value not in values:
+                bad += [(i, val) for i in series[series == test_value].index]
+
+        return bad
+
+    # TBD: store val_dict when loading database, or load it on-the-fly?
+    def check_table(self, tbl_name, val_dict, check_unique=True):
+        """
+        Check whether the CsvDatabase tables (CSV files) are clean.
+
+        :param tbl_name: (str) the name of the table to check
+        :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
+            holding dictionaries of validation info defined in validation.csv
+        :param check_unique: (bool) whether to check that all keys are unique per table
+        :return: (list of str) return an empty list if the table is "clean" else a list of error messages
+        """
+        errors = []
+
+        tbl = self.get_table(tbl_name)
+        data = tbl.data
+
+        if filter(lambda name: name.startswith('Unnamed: '), data.columns):
+            errors.append("Table {} has a 'Unnamed' column".format(tbl_name))
+            return errors
+
+        if len(data) == 0:
+            # print("Skipping empty table", tbl_name)
+            return errors
+
+        if check_unique:
+            md = self.table_metadata(tbl_name)
+
+            # use key column plus any df_cols to check for uniqueness
+            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
+
+            if key_cols:
+                # extract key columns as tuples to check for uniqueness
+                combo_keys = [tup for tup in data[key_cols].itertuples(name=None, index=False)]
+                if len(combo_keys) != len(set(combo_keys)):
+                    errors.append("Duplicate keys found in table {} for df_cols {}".format(tbl_name, key_cols))
+
+        for colname in data.columns:
+
+            # Prefer the more specific (table, column) over generic column spec
+            validation = val_dict.get((tbl_name, colname)) or val_dict.get(('', colname))
+
+            if validation:
+                series = data[colname]
+
+                if isinstance(validation, list):
+                    bad = self.check_value_list(series, validation)
+                else:  # it's a validation function
+                    bad = validation(series)
+
+                if bad:
+                    errors.append("Errors in {}.{}:".format(tbl_name, colname))
+                    for i, value in bad:
+                        if isinstance(validation, list):
+                            if len(validation) > 5:
+                                validation = validation[:2] + ["..."] + validation[-2:]
+                                errors.append("    Value '{}' at line {} not found in allowable list {}".format(
+                                    value, i + 2, validation))  # +1 for header; +1 to translate 0 offset
+                        else:
+                            errors.append("    Value '{}' at line {} failed data type check with function {}".format(
+                                value, i + 2, validation))
+
+        return errors
+
+    def check_tables(self, val_dict, check_unique=True):
+        """
+        Check whether the CsvDatabase tables (CSV files) are clean.
+
+        :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
+            holding dictionaries of validation info defined in validation.csv
+        :param check_unique: (bool) whether to check that all keys are unique per table
+        :return: True if the tables are "clean" (i.e., no errors), False otherwise
+        """
+        isClean = True
+
+        # the shapes.file_map is an empty dict when --no-shapes specified
+        tbl_names = self.file_map.keys() + self.shapes.file_map.keys()
+
+        for tblname in tbl_names:
+
+            if tblname == 'GEOGRAPHIES':  # TODO: generalize this
+                continue
+
+            errs = self.check_table(tblname, val_dict, check_unique=check_unique)
+
+            tbl = self.get_table(tblname)
+            data = tbl.data
+
+            if filter(lambda name: name.startswith('Unnamed: '), data.columns):
+                print("Table {} has a 'Unnamed' column".format(tblname))
+                isClean = False
+
+            if len(data) == 0:
+                # print("Skipping empty table", tblname)
+                continue
+
+            if check_unique:
+                md = self.table_metadata(tblname)
+
+                # use key column plus any df_cols to check for uniqueness
+                key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
+
+                if key_cols:
+                    # extract key columns as tuples to check for uniqueness
+                    combo_keys = [tup for tup in data[key_cols].itertuples(name=None, index=False)]
+                    if len(combo_keys) != len(set(combo_keys)):
+                        print("    Duplicate keys found in table {} for df_cols {}".format(tblname, key_cols))
+                        isClean = False
+
+            for colname in data.columns:
+
+                # Prefer the more specific (table, column) over generic column spec
+                validation = val_dict.get((tblname, colname)) or val_dict.get(('', colname))
+
+                if validation:
+                    series = data[colname]
+
+                    if isinstance(validation, list):
+                        errors = self.check_value_list(series, validation)
+                    else:  # it's a validation function
+                        errors = validation(series)
+
+                    if errors:
+                        isClean = False
+                        print("Errors in {}.{}:".format(tblname, colname))
+                        for i, value in errors:
+                            if isinstance(validation, list):
+                                if len(validation) > 5:
+                                    validation = validation[:2] + ["..."] + validation[-2:]
+                                print("    Value '{}' at line {} not found in allowable list {}".format(value, i + 2,
+                                                                                                        validation))  # +1 for header; +1 to translate 0 offset
+                            else:
+                                print("    Value '{}' at line {} failed data type check with function {}".format(value,
+                                                                                                                 i + 2,
+                                                                                                                 validation))
+
+        return isClean
+
+    def clean_tables(self, update, skip_dirs=None, trim_blanks=True,
+                     drop_empty_rows=True, drop_empty_cols=True):
+        """
+        Fix common errors in CSV files, according the the keyword args given.
+        Options include trim_blanks => remove blanks surrounding column names
+        and data values; drop_empty_cols => drop columns with empty names and
+        values; drop_empty_rows => drop rows with all col values empty. By
+        default, all options are True.
+
+        :param self: (CsvDatabase) a CsvDatabase instance
+        :param update: (bool) whether to write modifications back to the
+            table (CSV) file
+        :param skip_dirs: (list of str) directories to skip when cleaning
+        :param trim_blanks: (bool) whether to trim blanks surrounding column
+            names and data values.
+        :param drop_empty_rows: (bool) whether to drop empty rows.
+        :param drop_empty_cols: (bool) whether to drop empty columns.
+        :return: (bool) whether any errors where found and fixed.
+        """
+        import csv
+
+        counts = {'empty_rows': 0, 'empty_cols': 0, 'trimmed_blanks': 0}
+
+        any_modified = False
+
+        for tblname in list_tables(self.pathname, skip_dirs=skip_dirs):
+            modified = False
+            pathname = self.file_map[tblname]
+
+            data = []
+            openFunc = gzip.open if pathname.endswith('.gz') else open
+            with openFunc(pathname, 'rb') as infile:
+                csvreader = csv.reader(infile, delimiter=',')
+                for row in csvreader:
+                    data.append(row)
+
+            rows, columns = len(data), len(data[0])
+            # print("Table: {} ({:,} rows, {} cols)".format(tblname, rows, columns))
+
+            if drop_empty_rows:
+                # any rows that are all blanks get dropped
+                data = [row for row in data if not all([val == '' for val in row])]
+                if len(data) < rows:
+                    counts['empty_rows'] += 1
+                    modified = True
+
+            if drop_empty_cols:
+                # transpose list to make it easy to check the columns for blanks
+                data = map(list, zip(*data))
+
+                # any cols (transposed to rows) that are all blanks get dropped
+                data = [row for row in data if not all([val == '' for val in row])]
+                if len(data) < columns:
+                    counts['empty_cols'] += 1
+                    modified = True
+
+                # transpose back to the original data shape
+                data = map(list, zip(*data))
+
+            if trim_blanks:
+                # replace any strings that have extra spaces
+                for row_num, row in enumerate(data):
+                    for col_num, val in enumerate(row):
+                        stripped = re.sub(SPACES_PATTERN, ' ', val.strip())
+                        if val != stripped:
+                            counts['trimmed_blanks'] += 1
+                            data[row_num][col_num] = stripped
+                            modified = True
+
+            if modified:
+                any_modified = True
+                if update:
+                    print("   Writing", self.file_map[tblname])
+                    openFunc = gzip.open if pathname.endswith('.gz') else open
+                    with openFunc(pathname, 'wb') as outfile:
+                        csvwriter = csv.writer(outfile, delimiter=',')
+                        for row in data:
+                            csvwriter.writerow(row)
+        if any_modified:
+            def report(msg, key):
+                value = counts[key]
+                if value:
+                    print('  ', msg.format(value))
+
+            report("Removed empty rows from {} tables", 'empty_rows')
+            report("Removed empty cols from {} tables", 'empty_cols')
+            report("Trimmed blanks from {} values", 'trimmed_blanks')
+
+            if update:
+                print("Database errors found and fixed - files have been modified")
+            else:
+                print("Database errors found but update=False - no files were modified")
+        else:
+            print("Finished cleaning common db errors with no issues found")
+
+    def save_table(self, tbl_name, df, subdir=None, validate=True):
+        """
+        Save a dataframe as a database table.
+
+        :param tbl_name: (str) the name of the table to write the CSV file
+        :param df: (pandas.DataFrame) the data to write
+        :param subdir: (str or None) path relative to dbdir in which to write the CSV file
+        :param validate: (bool) whether to validate the data before writing
+        :return: a list of error strings, or an empty list if no errors.
+        """
+        pathname = os.path.join(self.pathname, subdir or '', tbl_name + '.csv')
+        errors = self.check_table(tbl_name, val_dict, check_unique=True) if validate else None
+
+        if not errors:
+            df.to_csv(pathname, index=None)
+
+def list_tables(db_pathname, skip_dirs=None):
+    tables = []
+
+    for dirpath, dirnames, filenames in os.walk(db_pathname, topdown=False):
+        if skip_dirs and skip_dirs in dirpath:
+            continue
+
+        for filename in filenames:
+            if re.match(CSV_PATTERN, filename):
+                basename = os.path.basename(filename)
+                tbl_name = basename.split('.')[0]
+                tables.append(tbl_name)
+
+    return tables
+
+def validate_db(dbdir, val_dict, update, metadata,
+                trim_blanks=True, drop_empty_rows=True, drop_empty_cols=True,
+                check_unique=True):
+    shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
+    shape_tables = shapes_file_map.keys()
+
+    metadata += [CsvMetadata(tbl_name, data_table=True) for tbl_name in shape_tables]
+    db = CsvDatabase.get_database(dbdir, load=False, metadata=metadata)
+
+    print("Cleaning common errors in db files")
+    db.clean_tables(update, skip_dirs='ShapeData', trim_blanks=trim_blanks,
+                    drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols)
+
+    # col_md = read_metadata(db, validationdir)
+
+    print("\nChecking db integrity")
+    # Assume all shape tables are "data tables", i.e., no "name" column is expected
+    db.shapes.load_all(verbose=False)
+
+    good = db.check_tables(val_dict, check_unique=check_unique)
+    message = "Database is clean\n" if good else "Database contains data errors\n"
+    print(message)
+    CsvDatabase.clear_cached_database()

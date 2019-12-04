@@ -27,6 +27,7 @@ class MissingKeyValue(CsvdbException):
 class DuplicateRowsFound(CsvdbException):
     def __init__(self, table, key):
         msg = "Duplicate rows found for key '{}' in table '{}'".format(key, table)
+
         super(DuplicateRowsFound, self).__init__(msg)
 
 class UnknownDataClass(CsvdbException):
