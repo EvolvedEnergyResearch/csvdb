@@ -15,29 +15,23 @@ _Bool  = _True + _False
 def str_to_bool(value):
     return isinstance(value, types.StringTypes) and value.lower() in _True
 
-def _check_bool(series):
+def _check_bool(series, nullable):
     bad = []
 
     for i, value in series.items():
-        if isinstance(value, types.StringTypes) and value.lower() not in _Bool:
+        if value is None and nullable:
+            continue
+
+        if not isinstance(value, types.StringTypes) or value.lower() not in _Bool:
             bad.append((i, value))
 
     return bad
 
-def _check_bool_or_empty(series):
+def _check_type(series, aType, nullable):
     bad = []
 
     for i, value in series.items():
-        if isinstance(value, types.StringTypes) and value.lower() not in _Bool and value is not None:
-            bad.append((i, value))
-
-    return bad
-
-def _check_type(series, aType, allow_null=False):
-    bad = []
-
-    for i, value in series.items():
-        if value is None and allow_null:
+        if value is None and nullable:
             continue
         try:
             aType(value)
@@ -46,25 +40,16 @@ def _check_type(series, aType, allow_null=False):
 
     return bad
 
-def _check_float(series):
-    return _check_type(series, float)
+def _check_float(series, nullable):
+    return _check_type(series, float, nullable)
 
-def _check_int(series):
-    return _check_type(series, int)
-
-def _check_float_or_empty(series):
-    return _check_type(series, float, allow_null=True)
-
-def _check_int_or_empty(series):
-    return _check_type(series, int, allow_null=True)
+def _check_int(series, nullable):
+    return _check_type(series, int, nullable)
 
 _check_fns = {
     'int'            : _check_int,
-    'int_or_empty'   : _check_int_or_empty,
     'float'          : _check_float,
-    'float_or_empty' : _check_float_or_empty,
     'bool'           : _check_bool,
-    'bool_or_empty'  : _check_bool_or_empty
 }
 
 def _is_float(s):

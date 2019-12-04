@@ -32,7 +32,12 @@ class CsvTable(object):
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
         self.filter_columns = filter_columns or []
         self.data_class = None
-        self.load_all()
+
+        # TBD: remove the try/except after debugging
+        try:
+            self.load_all()
+        except CsvdbException as e:
+            print(e)
 
     def _compute_metadata(self):
         md = self.metadata
@@ -45,28 +50,30 @@ class CsvTable(object):
         key_col   = md.key_col
         df_cols   = md.df_cols
         drop_cols = md.drop_cols + self.filter_columns
-        attr_cols = []
         non_attr_cols = []
 
         if not md.attr_cols:
             non_attr_cols = df_cols + drop_cols
-            md.attr_cols = attr_cols = [col for col in all_cols if col not in non_attr_cols]
+            md.attr_cols = [col for col in all_cols if col not in non_attr_cols]
+
+        attr_cols = md.attr_cols
 
         # verify that key col is included in the the attr cols
         if key_col not in attr_cols:
-            raise Exception("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
+            raise CsvdbException("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
 
         # verify that all specified cols are present
         specified_cols = set(attr_cols + non_attr_cols)
         missing = specified_cols - set(all_cols)
         if missing:
-            raise Exception("Table {}: cols {} are not present in table".format(tbl_name, sorted(missing)))
+            raise CsvdbException("Table {}: cols {} are not present in table".format(tbl_name, sorted(missing)))
 
     def _compute_output_metadata(self):
         md = self.metadata
         if md.data_table:
             return
-        tbl_name = self.name
+
+        # tbl_name = self.name
         all_cols =  [x for x in self.get_columns() if x not in self.filter_columns]
         md.key_col = None
         md.df_value_col = ['value']

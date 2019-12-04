@@ -387,40 +387,47 @@ class CsvDatabase(object):
         for colname in data.columns:
 
             # Prefer the more specific (table, column) over generic column spec
-            validation = val_dict.get((tbl_name, colname)) or val_dict.get(('', colname))
+            val_info = val_dict.get((tbl_name, colname)) or val_dict.get(('', colname))
 
-            if validation:
+            if val_info:
                 series = data[colname]
+                values = val_info.values
+                type_func = val_info.type_func
+                bad = []
 
-                if isinstance(validation, list):
-                    bad = self.check_value_list(series, validation)
-                else:  # it's a validation function
-                    bad = validation(series)
+                # If there are explicit values, check against them
+                if values:
+                    bad = self.check_value_list(series, values)
+
+                # Otherwise, if there's a type-checking function, call that
+                elif type_func:
+                    bad = type_func(series, not val_info.not_null)
 
                 if bad:
+                    if values and len(values) > 5:
+                        values = values[:2] + ["..."] + values[-2:]
+
                     errors.append("Errors in {}.{}:".format(tbl_name, colname))
                     for i, value in bad:
-                        if isinstance(validation, list):
-                            if len(validation) > 5:
-                                validation = validation[:2] + ["..."] + validation[-2:]
-                                errors.append("    Value '{}' at line {} not found in allowable list {}".format(
-                                    value, i + 2, validation))  # +1 for header; +1 to translate 0 offset
-                        else:
+                        if values:
+                            errors.append("    Value '{}' at line {} not found in allowable list {}".format(
+                                value, i + 2, values))  # +1 for header; +1 to translate 0 offset
+                        elif type_func:
                             errors.append("    Value '{}' at line {} failed data type check with function {}".format(
-                                value, i + 2, validation))
+                                value, i + 2, type_func.__name__))
 
         return errors
 
-    def check_tables(self, val_dict, check_unique=True):
+    def check_tables(self, val_dict, check_unique=True, print_msgs=True):
         """
         Check whether the CsvDatabase tables (CSV files) are clean.
 
         :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
             holding dictionaries of validation info defined in validation.csv
         :param check_unique: (bool) whether to check that all keys are unique per table
-        :return: True if the tables are "clean" (i.e., no errors), False otherwise
+        :return: List of error messages, or empty list if the tables are "clean"
         """
-        isClean = True
+        errmsgs = []
 
         # the shapes.file_map is an empty dict when --no-shapes specified
         tbl_names = self.file_map.keys() + self.shapes.file_map.keys()
@@ -431,59 +438,15 @@ class CsvDatabase(object):
                 continue
 
             errs = self.check_table(tblname, val_dict, check_unique=check_unique)
+            if errs:
+                errmsgs += errs
 
-            tbl = self.get_table(tblname)
-            data = tbl.data
+        # show all error messages
+        if print_msgs:
+            for e in errmsgs:
+                print(e)
 
-            if filter(lambda name: name.startswith('Unnamed: '), data.columns):
-                print("Table {} has a 'Unnamed' column".format(tblname))
-                isClean = False
-
-            if len(data) == 0:
-                # print("Skipping empty table", tblname)
-                continue
-
-            if check_unique:
-                md = self.table_metadata(tblname)
-
-                # use key column plus any df_cols to check for uniqueness
-                key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
-
-                if key_cols:
-                    # extract key columns as tuples to check for uniqueness
-                    combo_keys = [tup for tup in data[key_cols].itertuples(name=None, index=False)]
-                    if len(combo_keys) != len(set(combo_keys)):
-                        print("    Duplicate keys found in table {} for df_cols {}".format(tblname, key_cols))
-                        isClean = False
-
-            for colname in data.columns:
-
-                # Prefer the more specific (table, column) over generic column spec
-                validation = val_dict.get((tblname, colname)) or val_dict.get(('', colname))
-
-                if validation:
-                    series = data[colname]
-
-                    if isinstance(validation, list):
-                        errors = self.check_value_list(series, validation)
-                    else:  # it's a validation function
-                        errors = validation(series)
-
-                    if errors:
-                        isClean = False
-                        print("Errors in {}.{}:".format(tblname, colname))
-                        for i, value in errors:
-                            if isinstance(validation, list):
-                                if len(validation) > 5:
-                                    validation = validation[:2] + ["..."] + validation[-2:]
-                                print("    Value '{}' at line {} not found in allowable list {}".format(value, i + 2,
-                                                                                                        validation))  # +1 for header; +1 to translate 0 offset
-                            else:
-                                print("    Value '{}' at line {} failed data type check with function {}".format(value,
-                                                                                                                 i + 2,
-                                                                                                                 validation))
-
-        return isClean
+        return errmsgs
 
     def clean_tables(self, update, skip_dirs=None, trim_blanks=True,
                      drop_empty_rows=True, drop_empty_cols=True):
@@ -580,6 +543,7 @@ class CsvDatabase(object):
         else:
             print("Finished cleaning common db errors with no issues found")
 
+    # This function is part of the API used by Excel GUI
     def save_table(self, tbl_name, df, subdir=None, validate=True):
         """
         Save a dataframe as a database table.
@@ -630,7 +594,8 @@ def validate_db(dbdir, val_dict, update, metadata,
     # Assume all shape tables are "data tables", i.e., no "name" column is expected
     db.shapes.load_all(verbose=False)
 
-    good = db.check_tables(val_dict, check_unique=check_unique)
-    message = "Database is clean\n" if good else "Database contains data errors\n"
-    print(message)
+    msgs = db.check_tables(val_dict, check_unique=check_unique)
+    if not msgs:
+        print("Database is clean")
+
     CsvDatabase.clear_cached_database()
