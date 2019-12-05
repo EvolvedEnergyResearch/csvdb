@@ -1,4 +1,4 @@
-from .database import CsvDatabase, CsvMetadata, validate_db
+from .database import CsvDatabase, CsvMetadata
 from .data_object import DataObject
 from .error import *
 from .table import CsvTable

@@ -8,12 +8,7 @@ import pandas as pd
 import re
 
 from csvdb.database import SHAPE_DIR, CSV_PATTERN, ZIP_PATTERN
-from csvdb.error import CsvdbException, ValidationFormatError
-from csvdb import validate_db, ValidationDataError
-
-class ValidationUsageError(CsvdbException):
-    def __init__(self, msg):
-        super(ValidationUsageError, self).__init__(msg)
+from csvdb.error import ValidationUsageError, CsvdbException
 
 Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
@@ -181,7 +176,6 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 
 def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empty, schema_file,
          create_schema, update_schema, run, update_csv, check_unique, validate, verbose):
-    from csvdb.check import read_validation_csv
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
@@ -190,23 +184,22 @@ def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empt
         drop_empty_rows = drop_empty_cols = True
 
     if validate:
+        pkg_name = validate     # validate arg is a package name (str)
+
         try:
-            package = importlib.import_module(validate)
-            val_csv = os.path.join(package.__path__[0], 'etc',  'validation.csv')
-            metadata = package.get_metadata()
+            package = importlib.import_module(pkg_name)
             cls = package.database_class()
+            db = cls(pathname=dbdir, load=False)
 
-            db = cls(pathname=dbdir)
-
-            # Read and parse validation.csv
-            val_dict = read_validation_csv(db, val_csv)
-
-            validate_db(dbdir, val_dict, update_csv, metadata, trim_blanks=trim_blanks,
-                        drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols,
+            db.validate(pkg_name, update_csv,
+                        trim_blanks=trim_blanks,
+                        drop_empty_rows=drop_empty_rows,
+                        drop_empty_cols=drop_empty_cols,
                         check_unique=check_unique)
-        except ValidationDataError as e:
+        except CsvdbException as e:
             print(e)
 
+    # TBD
     if delete:
         print("Got delete arg: '{}'".format(delete))
 

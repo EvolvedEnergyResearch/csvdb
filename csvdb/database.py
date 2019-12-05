@@ -18,11 +18,13 @@
 #
 from __future__ import print_function
 from glob import glob
+from collections import OrderedDict
+import csv
 import gzip
 import os
 import pandas as pd
 import re
-from .error import CsvdbException
+from .error import CsvdbException, ValidationFormatError
 from .table import CsvTable, REF_SCENARIO, SENSITIVITY_COL
 import pdb
 
@@ -36,6 +38,34 @@ SPACES_PATTERN = re.compile('\s\s+')
 
 # case-insensitive match of *.gz files
 ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
+
+def getResource(pkg_name, rel_path):
+    """
+    Extract a resource (e.g., file) from the given relative path in
+    the named package.
+
+    :param pkg_name: (str) the name of the package to read from
+    :param rel_path: (str) a path relative to the package
+    :return: the file contents
+    """
+    import pkgutil
+
+    contents = pkgutil.get_data(pkg_name, rel_path)
+    return contents.decode('utf-8')
+
+def resourceStream(pkg_name, rel_path):
+    """
+    Return a stream on the resource found on the given path relative
+    to package pkg_name.
+
+    :param pkg_name: (str) the name of the package to read from
+    :param rel_path: (str) a path relative to the given package
+    :return: (file-like stream) a file-like buffer opened on the desired resource.
+    """
+    import io
+
+    text = getResource(pkg_name, rel_path)
+    return io.BytesIO(str(text))
 
 class CsvMetadata(object):
     __slots__ = ['table_name', 'data_table', 'key_col', 'has_key_col', 'attr_cols',
@@ -114,7 +144,7 @@ class ShapeDataMgr(object):
     def create_file_map(cls, db_path):
         """
         ShapeData is stored in gzipped slices of original 3.5 GB table.
-        The files are in a "{db_name}.db/ShapeData/{shape_name}.csv.gz"
+        The files are in a "{db_name}.self/ShapeData/{shape_name}.csv.gz"
         This is a classmethod so it can be called by clean.py to generate
         CsvMetadata instances before creating the CsvDatabase.
         """
@@ -179,6 +209,7 @@ class CsvDatabase(object):
         # maps table names => file names under the database root folder
         self.file_map = {}
         self.filter_columns = filter_columns or []
+        self.val_dict = None    # stored when first read
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -348,20 +379,22 @@ class CsvDatabase(object):
 
         return bad
 
-    def check_table(self, tbl_name, val_dict, check_unique=True):
+    def check_table(self, tbl_name, val_dict, data=None, check_unique=True):
         """
         Check whether the CsvDatabase tables (CSV files) are clean.
 
         :param tbl_name: (str) the name of the table to check
         :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
             holding dictionaries of validation info defined in validation.csv
+        :param data: (pandas.DataFrame) the data to check (e.g., before saving a CSV file).
+           If None, the data in the existing table is checked.
         :param check_unique: (bool) whether to check that all keys are unique per table
         :return: (list of str) return an empty list if the table is "clean" else a list of error messages
         """
         errors = []
 
         tbl = self.get_table(tbl_name)
-        data = tbl.data
+        data = data or tbl.data
 
         if filter(lambda name: name.startswith('Unnamed: '), data.columns):
             errors.append("Table {} has a 'Unnamed' column".format(tbl_name))
@@ -447,6 +480,21 @@ class CsvDatabase(object):
 
         return errmsgs
 
+    def list_tables(self, skip_dirs):
+        tables = []
+
+        for dirpath, dirnames, filenames in os.walk(self.pathname, topdown=False):
+            if skip_dirs and skip_dirs in dirpath:
+                continue
+
+            for filename in filenames:
+                if re.match(CSV_PATTERN, filename):
+                    basename = os.path.basename(filename)
+                    tbl_name = basename.split('.')[0]
+                    tables.append(tbl_name)
+
+        return tables
+
     def clean_tables(self, update, skip_dirs=None, trim_blanks=True,
                      drop_empty_rows=True, drop_empty_cols=True):
         """
@@ -466,13 +514,11 @@ class CsvDatabase(object):
         :param drop_empty_cols: (bool) whether to drop empty columns.
         :return: (bool) whether any errors where found and fixed.
         """
-        import csv
-
         counts = {'empty_rows': 0, 'empty_cols': 0, 'trimmed_blanks': 0}
 
         any_modified = False
 
-        for tblname in list_tables(self.pathname, skip_dirs=skip_dirs):
+        for tblname in self.list_tables(skip_dirs):
             modified = False
             pathname = self.file_map[tblname]
 
@@ -540,61 +586,107 @@ class CsvDatabase(object):
             else:
                 print("Database errors found but update=False - no files were modified")
         else:
-            print("Finished cleaning common db errors with no issues found")
+            print("Finished cleaning common self errors with no issues found")
+
+    def validate(self, pkg_name, update, trim_blanks=True, check_unique=True,
+                 drop_empty_rows=True, drop_empty_cols=True):
+        dbdir = self.pathname
+
+        # Add shape tables to metadata
+        shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
+        metadata = self.metadata
+        for tbl_name in shapes_file_map.keys():
+            metadata[tbl_name] = CsvMetadata(tbl_name, data_table=True)
+
+        print("Cleaning common errors in csvdb table files")
+        self.clean_tables(update, skip_dirs='ShapeData', trim_blanks=trim_blanks,
+                          drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols)
+
+        print("\nChecking self integrity")
+        # Assume all shape tables are "data tables", i.e., no "name" column is expected
+        self.shapes.load_all(verbose=False)
+
+        val_dict = self.read_validation_csv(pkg_name)
+
+        msgs = self.check_tables(val_dict, check_unique=check_unique)
+        if not msgs:
+            print("Database is clean")
+
+        CsvDatabase.clear_cached_database()
+
+    def read_validation_csv(self, pkg_name, use_cache=True):
+        """
+        Read and parse {package_dir}/etc/validation.csv.
+        If use_cache is True and the validation dict has been cached,
+        return it. Otherwise, read it from the designated package, and
+        if use_cache is True, store it in the CsvDatabase instance.
+        """
+        from .check import ValidationInfo
+
+        if use_cache and self.val_dict:
+            return self.val_dict
+
+        extra_inputs = 'additional_valid_inputs'
+        col_names = ['table_name', 'column_name', 'not_null', 'linked_column', 'dtype', 'folder',
+                     'referenced_table', 'referenced_field', 'cascade_delete', extra_inputs]
+        col_set = set(col_names)
+
+        f = resourceStream(pkg_name, 'etc/validation.csv')
+        rows = [row for row in csv.reader(f)]
+
+        # column names
+        names = [name for name in rows[0] if (name and not name.startswith('_c_'))]  # drop empty/generic col names
+        count = len(names)
+
+        name_set = set(names)
+        if name_set != col_set:
+            if name_set - col_set:
+                raise ValidationFormatError('Unknown validation columns: {}'.format(name_set - col_set))
+
+            if col_set - name_set:
+                raise ValidationFormatError('Missing validation columns: {}'.format(col_set - name_set))
+
+        # Store data keyed by tuple of (table, column), where table may be '' in some cases
+        val_dict = OrderedDict()
+
+        for row in rows[1:]:    # skip column names
+            (table_name, column_name, not_null, linked_column, dtype, folder,
+             referenced_table, referenced_field, cascade_delete, extra) = row[:count]
+
+            # convert "additional inputs" col into a list of strings of all non-empty values
+            # from trailing, unnamed or generic (_c_NN) columns. If initial value is '', convert
+            # to an empty list so value is always a list.
+            extra_values = ([extra] + [value for value in row[count:] if value != '']) if extra else []
+
+            obj = ValidationInfo(self, table_name, column_name, not_null, linked_column, dtype, folder,
+                                 referenced_table, referenced_field, cascade_delete, extra_values)
+
+            key = (table_name, column_name)
+            val_dict[key] = obj
+
+        if use_cache:
+            self.val_dict = val_dict
+
+        return val_dict
 
     # This function is part of the API used by Excel GUI
-    def save_table(self, tbl_name, df, subdir=None, validate=True):
+    def save_table(self, pkg_name, tbl_name, df, subdir=None, validate=True, use_cache=True):
         """
         Save a dataframe as a database table.
 
+        :param pkg_name: (str) the name of the package to read from
         :param tbl_name: (str) the name of the table to write the CSV file
         :param df: (pandas.DataFrame) the data to write
         :param subdir: (str or None) path relative to dbdir in which to write the CSV file
         :param validate: (bool) whether to validate the data before writing
+        :param use_cache: (bool) whether to reuse previously read validation data, if available.
         :return: a list of error strings, or an empty list if no errors.
         """
-        pathname = os.path.join(self.pathname, subdir or '', tbl_name + '.csv')
-        errors = self.check_table(tbl_name, val_dict, check_unique=True) if validate else None
+        val_dict = self.read_validation_csv(pkg_name, use_cache=use_cache)
+        errors = self.check_table(tbl_name, val_dict, data=df, check_unique=True) if validate else None
 
         if not errors:
+            pathname = os.path.join(self.pathname, subdir or '', tbl_name + '.csv')
             df.to_csv(pathname, index=None)
 
-def list_tables(db_pathname, skip_dirs=None):
-    tables = []
-
-    for dirpath, dirnames, filenames in os.walk(db_pathname, topdown=False):
-        if skip_dirs and skip_dirs in dirpath:
-            continue
-
-        for filename in filenames:
-            if re.match(CSV_PATTERN, filename):
-                basename = os.path.basename(filename)
-                tbl_name = basename.split('.')[0]
-                tables.append(tbl_name)
-
-    return tables
-
-def validate_db(dbdir, val_dict, update, metadata,
-                trim_blanks=True, drop_empty_rows=True, drop_empty_cols=True,
-                check_unique=True):
-    shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
-    shape_tables = shapes_file_map.keys()
-
-    metadata += [CsvMetadata(tbl_name, data_table=True) for tbl_name in shape_tables]
-    db = CsvDatabase.get_database(dbdir, load=False, metadata=metadata)
-
-    print("Cleaning common errors in db files")
-    db.clean_tables(update, skip_dirs='ShapeData', trim_blanks=trim_blanks,
-                    drop_empty_rows=drop_empty_rows, drop_empty_cols=drop_empty_cols)
-
-    # col_md = read_metadata(db, validationdir)
-
-    print("\nChecking db integrity")
-    # Assume all shape tables are "data tables", i.e., no "name" column is expected
-    db.shapes.load_all(verbose=False)
-
-    msgs = db.check_tables(val_dict, check_unique=check_unique)
-    if not msgs:
-        print("Database is clean")
-
-    CsvDatabase.clear_cached_database()
+        return errors
