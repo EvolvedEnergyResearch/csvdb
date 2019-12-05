@@ -126,3 +126,6 @@ class ValidationInfo(object):
                 extra_values = map(float, extra_values)
 
             self.values += extra_values
+
+    def __str__(self):
+        return "<ValidationInfo {}.{}>".format(self.table_name, self.column_name)

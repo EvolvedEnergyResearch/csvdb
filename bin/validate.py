@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+#
+# TBD: Check that all keys are unique
+# TBD: Check for orphaned rows (via cascade deletes that should have occurred)
+# TBD: Handle the run/no_run flag and the save_changes flag
+#
 from __future__ import print_function
 import click
 import gzip
@@ -133,13 +138,12 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 
 @click.command()
 
-@click.argument('dbdir', type=click.Path(exists=True))      # Positional argument
+# Required positional arguments
+@click.argument('dbdir', type=click.Path(exists=True))
+@click.argument('pkg_name', type=str)
 
 @click.option('--trim-blanks', '-b', is_flag=True, default=False,
               help='Trim blanks surrounding column names and data values')
-
-@click.option('--delete', '-d', type=str, metavar='TABLE.COL=value',
-              help='Delete a row from a table by key, including cascading deletes indicated in validation.csv. Argument must be of the form "TABLE.COL=value"')
 
 @click.option('--drop-empty-rows', is_flag=True, default=False,
               help='Drop empty rows when they are found')
@@ -156,26 +160,27 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 @click.option('--create-schema', '-c', is_flag=True, default=False,
               help='Save schema info in schema-file')
 
+@click.option('--delete-orphans', '-d', is_flag=True, default=False,
+              help='Scan all tables for orphaned rows and delete them.')
+
 @click.option('--update-schema', '-u', is_flag=True, default=False,
               help='Update schema from info in schema-file')
 
-@click.option('--run/--no-run', default=True,
-              help='For update mode, whether to run the update or just show what would be done.')
-
-@click.option('--update-csv/--no-update-csv', default=False,
-              help='Whether to write changed data back to the CSV files. Default is --no-update-csv.')
+@click.option('--save-changes/--no-save-changes', default=False,
+              help='Whether to write changed data back to the CSV files. Default is --no-save-changes.')
 
 @click.option('--check-unique', '-u', is_flag=True, default=False,
               help='Verify that all tables with keys have unique key values in all rows')
 
-@click.option('--validate', '-v', type=str, metavar='PACKAGE',
-              help='Validate the named python package, which must contain validate.csv.')
+@click.option('--validate', '-v', is_flag=True, default=False,
+              help='Validate the database based on validation.csv in the named package.')
 
 @click.option('--verbose', '-V', is_flag=True, default=False,
               help='Print confirmations of files whose schemas match')
 
-def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empty, schema_file,
-         create_schema, update_schema, run, update_csv, check_unique, validate, verbose):
+def main(dbdir, pkg_name, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
+         schema_file, create_schema, delete_orphans, update_schema, save_changes,
+         check_unique, validate, verbose):
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
@@ -183,31 +188,31 @@ def main(dbdir, trim_blanks, delete, drop_empty_rows, drop_empty_cols, drop_empt
     if drop_empty:
         drop_empty_rows = drop_empty_cols = True
 
-    if validate:
-        pkg_name = validate     # validate arg is a package name (str)
+    if drop_empty_rows or drop_empty_cols or delete_orphans:
+        validate = True
 
+    if validate:
         try:
             package = importlib.import_module(pkg_name)
             cls = package.database_class()
             db = cls(pathname=dbdir, load=False)
 
-            db.validate(pkg_name, update_csv,
+            db.validate(pkg_name,
+                        save_changes=save_changes,
                         trim_blanks=trim_blanks,
                         drop_empty_rows=drop_empty_rows,
                         drop_empty_cols=drop_empty_cols,
-                        check_unique=check_unique)
-        except CsvdbException as e:
-            print(e)
+                        check_unique=check_unique,
+                        delete_orphans=delete_orphans)
 
-    # TBD
-    if delete:
-        print("Got delete arg: '{}'".format(delete))
+        except Exception as e:
+            print(e)
 
     if create_schema:
         create_schema_file(dbdir, schema_file)
 
     if update_schema:
-        update_from_schema(dbdir, schema_file, run, verbose)
+        update_from_schema(dbdir, schema_file, save_changes, verbose)
 
 
 if __name__ == '__main__':
