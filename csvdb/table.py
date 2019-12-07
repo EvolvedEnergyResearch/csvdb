@@ -115,9 +115,11 @@ class CsvTable(object):
             openFunc = gzip.open if fn.endswith('.gz') else open
             with openFunc(fn, 'rb') as f:
                 dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values=''))
-        unique_columns = set([tuple(df.columns) for df in dfs])
-        if len(unique_columns)>1:
-            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns))
+
+        unique_columns_tups = set([tuple(df.columns) for df in dfs])
+        if len(unique_columns_tups) > 1:
+            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_tups))
+
         self.data = df = pd.concat(dfs)
 
         # TODO: skip this given data cleaning methods?
@@ -150,6 +152,7 @@ class CsvTable(object):
         if self.has_sensitivity_col(df):
             s = df[SENSITIVITY_COL]
             s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
+
         elif self.compile_sensitivities:
             # if the data doesn't have a sensitivity column and we are compiling sensitivities, data is just None
             self.data = None
@@ -158,17 +161,22 @@ class CsvTable(object):
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
         if self.output_table:
             df = df.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
+
         elif self.compile_sensitivities:
             df = df[md.df_cols]
             df = df.rename(columns={md.key_col:'name'})
+
             for filter_num, filter in enumerate(md.df_filters):
-                df[filter] = filter+':'+df[filter]
+                df[filter] = filter + ':' + df[filter]
                 df = df.rename(columns={filter: 'filter{}'.format(filter_num+1)})
+
             df = df.drop_duplicates()
+
         self.data = df = df.where(pd.notnull(df), other=None)
         drop_cols = [x for x in self.filter_columns if x in self.data.columns]
-        for x in drop_cols:
-            self.data.drop(x,axis=1,inplace=True)
+        if drop_cols:
+            self.data.drop(drop_cols, axis='columns', inplace=True)
+
         rows, cols = df.shape
         if Verbose:
             print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))

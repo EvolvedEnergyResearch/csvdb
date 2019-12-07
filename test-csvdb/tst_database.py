@@ -7,13 +7,18 @@ _Metadata = [
                 data_table=True,
                 has_key_col=False),
 
+    CsvMetadata('EMISSIONS_PRICE_BAD',
+                data_table=True,
+                has_key_col=False),
+
     CsvMetadata('GeographiesSpatialJoin',
                 data_table=True),
 
     CsvMetadata('GeographyMapKeys',
                 data_table=True),
 
-    CsvMetadata('TECH_MAIN'),  # all defaults apply
+    CsvMetadata('TECH_MAIN',
+                has_key_col=False),
 
     CsvMetadata('NEW_TECH_CAPITAL_COST',
                 key_col='name',

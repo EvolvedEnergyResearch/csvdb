@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-#
-# TBD: Check that all keys are unique
-# TBD: Check for orphaned rows (via cascade deletes that should have occurred)
-# TBD: Handle the run/no_run flag and the save_changes flag
-#
 from __future__ import print_function
 import click
 import gzip
@@ -17,7 +12,7 @@ from csvdb.error import ValidationUsageError, CsvdbException
 
 Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
-DefaultSchemaFile = 'csvdb-schema.csv'
+DefaultSchemaFile = 'schema.csv'
 
 def mkdirs(newdir, mode=0o770):
     """
@@ -40,6 +35,7 @@ def create_file_map(dbdir):
     if not os.path.isdir(dbdir):
         raise ValidationUsageError('Database path "{}" is not a directory'.format(dbdir))
 
+    dbdir = os.path.abspath(dbdir)
     prefixLen = len(dbdir) + 1
 
     for dirpath, dirnames, filenames in os.walk(dbdir, topdown=False):
@@ -85,9 +81,9 @@ def update_from_schema(dbdir, schema_file, run, verbose):
         abspath = os.path.join(dbdir, relpath).replace('\\', '/')
 
         basename = os.path.basename(relpath)
-        tblname = basename.split('.')[0]
+        tbl_name = basename.split('.')[0]
 
-        csvFile = file_map.get(tblname)
+        csvFile = file_map.get(tbl_name)
 
         if not (csvFile and os.path.exists(abspath)):
             print('Creating empty file {}'.format(relpath))
@@ -109,8 +105,8 @@ def update_from_schema(dbdir, schema_file, run, verbose):
                 print('{}: OK'.format(relpath))
 
         else:
-            source_cols = map(str.strip, source_cols)
-            target_cols = map(str.strip, target_cols)
+            source_cols = [col.strip() for col in source_cols]
+            target_cols = [col.strip() for col in target_cols]
 
             source_set = set(source_cols)
             target_set = set(target_cols)
@@ -141,6 +137,9 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 # Required positional arguments
 @click.argument('dbdir', type=click.Path(exists=True))
 @click.argument('pkg_name', type=str)
+
+@click.option('--all', '-a', is_flag=True, default=False,
+              help='Shorthand for --trim-blanks --drop-empty --delete-orphans --check-unique')
 
 @click.option('--trim-blanks', '-b', is_flag=True, default=False,
               help='Trim blanks surrounding column names and data values')
@@ -178,12 +177,15 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 @click.option('--verbose', '-V', is_flag=True, default=False,
               help='Print confirmations of files whose schemas match')
 
-def main(dbdir, pkg_name, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
+def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
          schema_file, create_schema, delete_orphans, update_schema, save_changes,
          check_unique, validate, verbose):
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
+
+    if all:
+        drop_empty = trim_blanks = delete_orphans = check_unique = True
 
     if drop_empty:
         drop_empty_rows = drop_empty_cols = True
@@ -191,28 +193,31 @@ def main(dbdir, pkg_name, trim_blanks, drop_empty_rows, drop_empty_cols, drop_em
     if drop_empty_rows or drop_empty_cols or delete_orphans:
         validate = True
 
+    if create_schema:
+        create_schema_file(dbdir, schema_file)
+
+    if update_schema:
+        update_from_schema(dbdir, schema_file, save_changes, verbose)
+
     if validate:
         try:
             package = importlib.import_module(pkg_name)
             cls = package.database_class()
             db = cls(pathname=dbdir, load=False)
 
-            db.validate(pkg_name,
-                        save_changes=save_changes,
-                        trim_blanks=trim_blanks,
-                        drop_empty_rows=drop_empty_rows,
-                        drop_empty_cols=drop_empty_cols,
-                        check_unique=check_unique,
-                        delete_orphans=delete_orphans)
-
         except Exception as e:
             print(e)
 
-    if create_schema:
-        create_schema_file(dbdir, schema_file)
+        db.validate(pkg_name,
+                    skip_dir='ShapeData',           # make these cmdline args?
+                    skip_tables=['GEOGRAPHIES'],
 
-    if update_schema:
-        update_from_schema(dbdir, schema_file, save_changes, verbose)
+                    save_changes=save_changes,
+                    trim_blanks=trim_blanks,
+                    drop_empty_rows=drop_empty_rows,
+                    drop_empty_cols=drop_empty_cols,
+                    check_unique=check_unique,
+                    delete_orphans=delete_orphans)
 
 
 if __name__ == '__main__':
