@@ -8,7 +8,7 @@ import pandas as pd
 import re
 
 from csvdb.database import SHAPE_DIR, CSV_PATTERN, ZIP_PATTERN
-from csvdb.error import ValidationUsageError, CsvdbException
+from csvdb.error import ValidationUsageError
 
 Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
@@ -208,16 +208,17 @@ def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, dr
         except Exception as e:
             print(e)
 
-        db.validate(pkg_name,
-                    skip_dir='ShapeData',           # make these cmdline args?
-                    skip_tables=['GEOGRAPHIES'],
+        if db:
+            db.validate(pkg_name,
+                        skip_dir='ShapeData',           # make these cmdline args?
+                        skip_tables=['GEOGRAPHIES'],
 
-                    save_changes=save_changes,
-                    trim_blanks=trim_blanks,
-                    drop_empty_rows=drop_empty_rows,
-                    drop_empty_cols=drop_empty_cols,
-                    check_unique=check_unique,
-                    delete_orphans=delete_orphans)
+                        save_changes=save_changes,
+                        trim_blanks=trim_blanks,
+                        drop_empty_rows=drop_empty_rows,
+                        drop_empty_cols=drop_empty_cols,
+                        check_unique=check_unique,
+                        delete_orphans=delete_orphans)
 
 
 if __name__ == '__main__':

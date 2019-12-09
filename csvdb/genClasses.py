@@ -63,7 +63,7 @@ class ClassGenerator(object):
         df_filters  = md.df_filters
 
         stream.write('    _table_name = "{}"\n'.format(table))
-        stream.write('    _key_col = "{}"\n'.format(key_col))  # save as a class variable
+        stream.write('    _key_col = {!r}\n'.format(key_col))  # save as a class variable
 
         def write_class_var(name, col_or_cols):
             if isinstance(col_or_cols, (list, tuple)):
@@ -90,7 +90,11 @@ class ClassGenerator(object):
         params = [col + '=None' for col in sorted_attrs]
         params = observeLinewidth(params, self.linewidth)
 
-        stream.write('    def __init__(self, {}, scenario):\n'.format(key_col))
+        if key_col is None:
+            stream.write('    def __init__(self, scenario):\n')
+        else:
+            stream.write('    def __init__(self, {}, scenario):\n'.format(key_col))
+
         stream.write('        {}.__init__(self, {}, scenario)\n'.format(base_class, key_col))
         stream.write('\n')
         stream.write('        {}._instances_by_key[self._key] = self\n'.format(class_name))
