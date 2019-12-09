@@ -437,7 +437,6 @@ class CsvDatabase(object):
             data = pd.DataFrame(data)
 
         data.to_csv(pathname, index=None, compression='infer')
-        print("Wrote '{}'".format(pathname))
 
     def clean_table(self, tbl_name, val_dict, counts,
                     data=None,
