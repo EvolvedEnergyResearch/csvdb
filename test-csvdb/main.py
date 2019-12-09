@@ -57,6 +57,8 @@ def main():
     db = TestDatabase.get_database(pathname)
     scenario = None
 
+    obj = TechMain(None)
+
     map_keys = db.get_table("GeographyMapKeys")
     print("\nGeographyMapKeys:\n", map_keys.data)
 

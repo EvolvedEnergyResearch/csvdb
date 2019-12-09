@@ -101,7 +101,8 @@ class ClassGenerator(object):
         stream.write('\n')
 
         for col in sorted_attrs:
-            stream.write('        self.{col} = None\n'.format(col=col))
+            value = col if col == key_col else None
+            stream.write('        self.{} = {}\n'.format(col, value))
 
         stream.write('\n')
 

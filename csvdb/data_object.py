@@ -76,7 +76,12 @@ class DataObject(object):
         self.raw_values = None
 
     def __str__(self):
-        return "<{} {}='{}'>".format(self.__class__.__name__, self._key_col, self._key)
+        cls_name = self.__class__.__name__
+        key_col = self._key_col
+
+        s = "<{} (no key col)>".format(cls_name) if key_col is None else "<{} {}='{}'>".format(cls_name, key_col, self._key)
+        return s
+
 
     @classmethod
     def load_from_db(cls, key, scenario, **filters):
@@ -242,33 +247,3 @@ class DataObject(object):
     def check_scenario(self, scenario):
         if scenario != self._scenario:
             raise CsvdbException("DataObject: mismatch between caller's scenario ({}) and self._scenario ({})".format(scenario, self._scenario))
-
-    # Deprecated
-    # TODO: Imported from EP. Not sure if it will remain.
-    # # Caller gets mapped cols via "from .text_mappings import MappedCols"
-    # def map_strings(self, df, mapped_cols, drop_str_cols=True):
-    #     tbl_name = self._data_table_name
-    #
-    #     strmap = StringMap.getInstance()
-    #     str_cols = mapped_cols.get(tbl_name, [])
-    #
-    #     for col in str_cols:
-    #         # Ensure that all values are in the StringMap
-    #         values = df[col].unique()
-    #         for value in values:
-    #             strmap.store(value)
-    #
-    #         # mapped column "foo" becomes "foo_id"
-    #         id_col = col + '_id'
-    #
-    #         # Force string cols to str and replace 'nan' with None
-    #         df[col] = df[col].astype(str)
-    #         df.loc[df[col] == 'nan', col] = None
-    #
-    #         # create a column with integer ids
-    #         df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
-    #
-    #     if drop_str_cols:
-    #         df.drop(str_cols, axis=1, inplace=True)
-    #
-    #     return df

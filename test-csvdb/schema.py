@@ -30,7 +30,7 @@ class BlendCapitalCost(DataObject):
         self.geography_map_key = None
         self.interpolation_method = None
         self.levelized = None
-        self.name = None
+        self.name = name
         self.recovery_factor = None
         self.unit = None
 
@@ -81,7 +81,7 @@ class BlendExistingStorage(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.unit = None
 
     def set_args(self, scenario, extrapolation_growth_rate=None, extrapolation_method=None, geography=None,
@@ -119,7 +119,7 @@ class BlendExoDemand(DataObject):
 
         BlendExoDemand._instances_by_key[self._key] = self
 
-        self.name = None
+        self.name = name
         self.unit = None
         self.value = None
         self.year = None
@@ -153,7 +153,7 @@ class BlendFuelInputs(DataObject):
 
         self.fuel = None
         self.limit = None
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, fuel=None, limit=None, name=None):
         self.check_scenario(scenario)
@@ -184,7 +184,7 @@ class BlendMain(DataObject):
         self.book_life = None
         self.enforce_storage_constraints = None
         self.lifetime = None
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, book_life=None, enforce_storage_constraints=None, lifetime=None, name=None):
         self.check_scenario(scenario)
@@ -224,7 +224,7 @@ class ConversionCapitalCost(DataObject):
         self.geography_map_key = None
         self.interpolation_method = None
         self.levelized = None
-        self.name = None
+        self.name = name
         self.recovery_factor = None
         self.time_unit = None
         self.unit = None
@@ -282,7 +282,7 @@ class ConversionEfficiency(DataObject):
         self.input = None
         self.input_unit = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.output_unit = None
 
     def set_args(self, scenario, extrapolation_growth_rate=None, extrapolation_method=None, geography=None,
@@ -332,7 +332,7 @@ class ConversionFixedOmAnn(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.time_unit = None
@@ -383,7 +383,7 @@ class ConversionMain(DataObject):
 
         ConversionMain._instances_by_key[self._key] = self
 
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, name=None):
         self.check_scenario(scenario)
@@ -412,7 +412,7 @@ class ConversionRps(DataObject):
         self.gau = None
         self.geography = None
         self.geography_map_key = None
-        self.name = None
+        self.name = name
         self.type = None
         self.value = None
         self.year = None
@@ -458,7 +458,7 @@ class ConversionVariableOm(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.unit = None
@@ -517,7 +517,7 @@ class ExistingMain(DataObject):
         self.geography = None
         self.load_p_max = None
         self.load_p_min = None
-        self.name = None
+        self.name = name
         self.operating_year = None
         self.ramp_rate = None
         self.ramp_rate_time_unit = None
@@ -585,7 +585,7 @@ class NewTechCapitalCost(DataObject):
         self.interpolation_method = None
         self.levelized = None
         self.lifecycle = None
-        self.name = None
+        self.name = name
         self.recovery_factor = None
         self.time_unit = None
         self.unit = None
@@ -633,7 +633,7 @@ class OneCol(DataObject):
 
         OneCol._instances_by_key[self._key] = self
 
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, name=None):
         self.check_scenario(scenario)
@@ -668,7 +668,7 @@ class ProductCost(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.unit = None
         self.value = None
         self.year = None
@@ -723,7 +723,7 @@ class ProductEmissions(DataObject):
         self.geography = None
         self.interpolation_method = None
         self.mass_unit = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.value = None
@@ -770,7 +770,7 @@ class ProductMain(DataObject):
 
         ProductMain._instances_by_key[self._key] = self
 
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, name=None):
         self.check_scenario(scenario)
@@ -800,7 +800,7 @@ class ProductPotential(DataObject):
         self.extrapolation_growth_rate = None
         self.extrapolation_method = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.unit = None
@@ -850,7 +850,7 @@ class ProductRps(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.value = None
         self.year = None
 
@@ -897,7 +897,7 @@ class TechCapacityFactor(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
 
     def set_args(self, scenario, extrapolation_method=None, gau=None, geography=None, geography_map_key=None,
                  interpolation_method=None, name=None):
@@ -940,7 +940,7 @@ class TechCapitalCost(DataObject):
         self.geography_map_key = None
         self.interpolation_method = None
         self.levelized = None
-        self.name = None
+        self.name = name
         self.recovery_factor = None
         self.time_unit = None
         self.unit = None
@@ -989,7 +989,7 @@ class TechCurtailmentCost(DataObject):
 
         self.currency = None
         self.currency_year = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.unit = None
         self.value = None
@@ -1032,7 +1032,7 @@ class TechEfficiency(DataObject):
         self.blend_out = None
         self.max_load_value = None
         self.min_load_value = None
-        self.name = None
+        self.name = name
         self.unit_in = None
         self.unit_out = None
         self.vintage = None
@@ -1080,7 +1080,7 @@ class TechFixedOm(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.unit = None
@@ -1133,7 +1133,7 @@ class TechItc(DataObject):
         self.currency = None
         self.currency_year = None
         self.input_type = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.unit = None
         self.value = None
@@ -1270,7 +1270,7 @@ class TechPotential(DataObject):
         self.geography_map_key = None
         self.incremental_to_existing = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.sensitivity = None
         self.source = None
@@ -1331,7 +1331,7 @@ class TechPtc(DataObject):
 
         self.currency = None
         self.currency_year = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.unit = None
         self.value = None
@@ -1382,7 +1382,7 @@ class TechRetirementCost(DataObject):
         self.geography_map_key = None
         self.interpolation_method = None
         self.levelized = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.recovery_factor = None
         self.sensitivity = None
@@ -1445,7 +1445,7 @@ class TechRps(DataObject):
 
         self.RPS = None
         self.load_modifier = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.vintage = None
         self.year = None
@@ -1486,7 +1486,7 @@ class TechSchedule(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.time_unit = None
         self.type = None
@@ -1537,7 +1537,7 @@ class TechShutdownCost(DataObject):
 
         self.currency = None
         self.currency_year = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.source = None
         self.unit = None
@@ -1577,7 +1577,7 @@ class TechStartupCost(DataObject):
 
         self.currency = None
         self.currency_year = None
-        self.name = None
+        self.name = name
         self.sensitivity = None
         self.unit = None
         self.value = None
@@ -1621,7 +1621,7 @@ class TechVariableOm(DataObject):
         self.geography = None
         self.geography_map_key = None
         self.interpolation_method = None
-        self.name = None
+        self.name = name
         self.notes = None
         self.sensitivity = None
         self.source = None
