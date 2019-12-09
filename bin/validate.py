@@ -124,7 +124,7 @@ def update_from_schema(dbdir, schema_file, run, verbose):
             if run:
                 new = pd.DataFrame(columns=source_cols)     # all columns, in correct order
                 old = pd.read_csv(abspath, index_col=None)
-                old.columns = map(str.strip, old.columns)
+                old.columns = [col.strip() for col in old.columns]
 
                 if len(old) > 0:
                     for col in source_set.intersection(target_set):

@@ -55,7 +55,7 @@ class CsvTable(object):
         attr_cols = md.attr_cols
 
         # verify that key col is included in the the attr cols
-        if key_col not in attr_cols:
+        if md.has_key_col and key_col not in attr_cols:
             raise CsvdbException("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
 
         # verify that all specified cols are present

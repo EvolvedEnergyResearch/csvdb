@@ -18,7 +18,7 @@
 #
 from __future__ import print_function
 from glob import glob
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 import csv
 import gzip
 import os
@@ -85,6 +85,10 @@ class CsvMetadata(object):
         self.table_name = table_name
         self.data_table = data_table
 
+        # TBD: for debugging breakpoint only
+        if table_name == 'TECH_MAIN':
+            pass
+
         if data_table:
             # ignore all other parameters, if any, to constructor
             self.key_col = None
@@ -92,6 +96,7 @@ class CsvMetadata(object):
             self.df_filters = self.df_cols = self.attr_cols = self.drop_cols = self.lowcase_cols = []
             self.df_value_col = []
         else:
+            self.has_key_col  = has_key_col
             self.key_col      = key_col or ('name' if has_key_col else None)
             self.df_filters   = df_filters or []
             self.df_cols      = df_cols or []
@@ -379,20 +384,22 @@ class CsvDatabase(object):
 
         return bad
 
-    def delete_orphans(self, tbl_name, df, val_info, bad_items, save_changes=True):
+    def delete_orphans(self, tbl_name, df, val_info, bad_items, save_changes):
         """
         Delete (or report need to delete, if save_changes is False) rows found when checking
         data values.
         """
+        msg = ''
+
         # make sure this is a properly set-up cascade-deletion situation
         if not (val_info.cascade_delete and val_info.ref_tbl and val_info.ref_col):
-            return
+            return msg
 
         verb = 'Deleting' if save_changes else 'Would delete'
         bad_values = sorted(set([v for i, v in bad_items]))
 
-        print("{} {} orphaned rows from table {}, with values of {} in column {}".format(
-            verb, len(bad_items), tbl_name, bad_values, val_info.column_name))
+        msg = "{} {} orphaned rows from table {}, with values of {} in column {}".format(
+               verb, len(bad_items), tbl_name, bad_values, val_info.column_name)
 
         if save_changes:
             idxs = [idx for idx, value in bad_items]
@@ -400,119 +407,13 @@ class CsvDatabase(object):
             pathname = self.file_map[tbl_name]
             self.write_table(df, pathname)
 
+        return msg
 
-    def check_table(self, tbl_name, val_dict, data=None, check_unique=True,
-                    save_changes=True):
-        """
-        Check whether the CsvDatabase tables (CSV files) are clean.
-
-        :param tbl_name: (str) the name of the table to check
-        :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
-            holding dictionaries of validation info defined in validation.csv
-        :param data: (pandas.DataFrame) the data to check (e.g., before saving a CSV file).
-           If None, the data in the existing table is checked.
-        :param check_unique: (bool) whether to check that all keys are unique per table
-        :param delete_orphans: (bool) whether to delete orphaned rows
-        :param save_changes: (bool) whether to write modifications back to the table (CSV) file
-        :return: (list of str) return an empty list if the table is "clean" else a list of error messages
-        """
-        errors = []
-
-        tbl = self.get_table(tbl_name)
-        df = data or tbl.data
-
-        if filter(lambda name: name.startswith('Unnamed: '), data.columns):
-            errors.append("Table {} has a 'Unnamed' column".format(tbl_name))
-            return errors
-
-        if len(df) == 0:
-            # print("Skipping empty table", tbl_name)
-            return errors
-
-        if check_unique:
-            md = self.table_metadata(tbl_name)
-
-            # use key column plus any df_cols to check for uniqueness
-            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
-
-            if key_cols:
-                # extract key columns as tuples to check for uniqueness
-                combo_keys = [tup for tup in data[key_cols].itertuples(name=None, index=False)]
-                if len(combo_keys) != len(set(combo_keys)):
-                    errors.append("Duplicate keys found in table {} for df_cols {}".format(tbl_name, key_cols))
-
-        for colname in data.columns:
-            # Prefer the more specific (table, column) over generic column spec
-            val_info = val_dict.get((tbl_name, colname)) or val_dict.get(('', colname))
-
-            if val_info:
-                series = data[colname]
-                values = val_info.values
-                type_func = val_info.type_func
-                bad = []
-
-                # If there are implicit or explicit values, check against them
-                if values:
-                    bad = self.check_value_list(series, values)
-                    if bad:
-                        self.delete_orphans(tbl_name, data, val_info, bad, save_changes=save_changes)
-
-                # Otherwise, if there's a type-checking function, call that
-                elif type_func:
-                    bad = type_func(series, not val_info.not_null)
-
-                if bad:
-                    if values and len(values) > 5:
-                        values = values[:2] + ["..."] + values[-2:]
-
-                    errors.append("Errors in {}.{}:".format(tbl_name, colname))
-                    for i, value in bad:
-                        if values:
-                            errors.append("    Value '{}' at line {} not found in allowable list {}".format(
-                                value, i + 2, values))  # +1 for header; +1 to translate 0 offset
-                        elif type_func:
-                            errors.append("    Value '{}' at line {} failed data type check with function {}".format(
-                                value, i + 2, type_func.__name__))
-
-        return errors
-
-    # TBD: merge check_tables and clean_tables. The division is useless and confusing.
-    def check_tables(self, val_dict, check_unique=True, save_changes=False,
-                     print_msgs=True):
-        """
-        Check whether the CsvDatabase tables (CSV files) are clean.
-
-        :param val_dict: (OrderedDict of OrderedDicts) keyed by (table, column) tuple,
-            holding dictionaries of validation info defined in validation.csv
-        :param check_unique: (bool) whether to check that all keys are unique per table
-        :return: List of error messages, or empty list if the tables are "clean"
-        """
-        errmsgs = []
-
-        # the shapes.file_map is an empty dict when --no-shapes specified
-        tbl_names = self.file_map.keys() + self.shapes.file_map.keys()
-
-        for tblname in tbl_names:
-
-            if tblname == 'GEOGRAPHIES':  # TODO: generalize this
-                continue
-
-            errs = self.check_table(tblname, val_dict, check_unique=check_unique, save_changes=save_changes)
-            if errs:
-                errmsgs += errs
-
-        # show all error messages
-        if print_msgs:
-            for e in errmsgs:
-                print(e)
-
-        return errmsgs
-
-    def list_tables(self, skip_dirs):
+    def list_tables(self, skip_dir):
         tables = []
 
         for dirpath, dirnames, filenames in os.walk(self.pathname, topdown=False):
-            if skip_dirs and skip_dirs in dirpath:
+            if skip_dir and skip_dir in dirpath:
                 continue
 
             for filename in filenames:
@@ -529,73 +430,147 @@ class CsvDatabase(object):
         If the filename ends in ".gz", the data is written using gzip.
 
         :param data: (pandas.DataFrame or list of row tuples)
-        :param pathname: (str) the pathname to write to.
+        :param pathname: (str) the pathname to write to. If the extension indicates
+            a compressed format, the file will be compressed as indicated.
         """
-        iterator = data.iterrows() if isinstance(data, pd.DataFrame) else data
+        if not isinstance(data, pd.DataFrame):
+            data = pd.DataFrame(data)
 
-        openFunc = gzip.open if pathname.endswith('.gz') else open
-        with openFunc(pathname, 'wb') as outfile:
-            writer = csv.writer(outfile, delimiter=',')
-            for row in iterator:
-                writer.writerow(row)
+        data.to_csv(pathname, index=None, compression='infer')
+        print("Wrote '{}'".format(pathname))
 
-    def clean_table(self, tbl_name, counts,
+    def clean_table(self, tbl_name, val_dict, counts,
+                    data=None,
+                    check_unique=True,
                     trim_blanks=True,
                     drop_empty_rows=True,
                     drop_empty_cols=True,
+                    delete_orphans=True,
                     save_changes=True):
+        """
+        Check whether the CsvDatabase tables (CSV files) are clean, and correct the issues requested.
 
+        :return: (tuple of (bool, list of str)) first value indicates whether any automatically fixable
+            errors were found. Second value is an empty list if no errors found nor changes made,
+            otherwise a list of messages describing what was found or changed. These are separate since
+            some errors can't be fixed automatically, so they are just reported.
+        """
+        import six
+
+        fixable = False
         pathname = self.file_map[tbl_name]
 
         tbl = self.get_table(tbl_name)
-        df = tbl.data
+        df = data or tbl.data
+
+        msgs = []
+
+        if len(df) == 0:
+            msgs.append("Skipping empty table {}".format(tbl_name))
+            return (fixable, msgs)
+
+        if check_unique:
+            md = self.table_metadata(tbl_name)
+
+            # use key column plus any df_cols to check for uniqueness
+            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
+
+            if key_cols:
+                # extract key columns as tuples to check for uniqueness
+                combo_keys = [tup for tup in df[key_cols].itertuples(name=None, index=False)]
+                if len(combo_keys) != len(set(combo_keys)):
+                    msgs.append("Duplicate keys found in table {} for df_cols {}".format(tbl_name, key_cols))
 
         empty_row_idxs = []
         empty_cols = []
         trim_count = 0
+        orphan_count = 0
 
         for col_name in df:
+            col_series = df[col_name]
 
             if trim_blanks:
-                for idx, val in df[col_name].iteritems():
-                    stripped = re.sub(SPACES_PATTERN, ' ', val.strip())
-                    if val != stripped:
-                        trim_count += 1
-                        if save_changes:
-                            df.at[idx][col_name] = stripped
+                for idx, value in col_series.iteritems():
+                    if isinstance(value, six.string_types):
+                        stripped = re.sub(SPACES_PATTERN, ' ', value.strip())
+                        if value != stripped:
+                            trim_count += 1
+                            if save_changes:
+                                df.loc[idx, col_name] = stripped
 
-            if drop_empty_cols:
-                if all(map(lambda x: x is None or x == '', df[col_name])):
-                    empty_cols.append(col_name)
+            if col_name.startswith('Unnamed: '):
+                msgs.append("Table {} has an '{}' column".format(tbl_name, col_name))
 
-        # drop empty columns
-        if empty_cols and save_changes:
-            df.drop(empty_cols, axis='columns', inplace=True)
+                if drop_empty_cols:
+                    if all(map(lambda x: x is None or x == '', col_series)):
+                        print("Table {} has empty column '{}'".format(tbl_name, col_name))
+                        empty_cols.append(col_name)
 
-        # drop empty rows
+            # Prefer the more specific (table, column) over generic column spec
+            val_info = val_dict.get((tbl_name, col_name)) or val_dict.get(('', col_name))
+
+            if val_info:
+                values = val_info.values
+                type_func = val_info.type_func
+                bad = []
+
+                # If there are implicit or explicit values, check against them
+                if values:
+                    bad = self.check_value_list(col_series, values)
+                    if bad and delete_orphans:
+                        # TBD: needs to be recursive
+                        msg = self.delete_orphans(tbl_name, df, val_info, bad, save_changes)
+                        msgs.append(msg)
+                        orphan_count += len(bad)
+
+                # Otherwise, if there's a type-checking function, call that
+                elif type_func:
+                    bad = type_func(col_series, not val_info.not_null)
+
+                if bad:
+                    if values and len(values) > 5:
+                        values = values[:2] + ["..."] + values[-2:]
+
+                    msgs.append("Errors in {}.{}:".format(tbl_name, col_name))
+                    for i, value in bad:
+                        if values:
+                            msgs.append("    Value '{}' at line {} not found in allowable list {}".format(
+                                value, i + 2, values))  # +1 for header; +1 to translate 0 offset
+                        elif type_func:
+                            msgs.append("    Value '{}' at line {} failed data type check with function {}".format(
+                                value, i + 2, type_func.__name__))
+
+        # collect indices of empty rows
         if drop_empty_rows:
             for idx, row in df.iterrows():
                 if all(map(lambda x: x is None or x == '', row)):
                     empty_row_idxs.append(idx)
 
-        if empty_row_idxs and save_changes:
-            df.drop(empty_row_idxs, axis='index', inplace=True)
-
         counts['empty_rows'] += len(empty_row_idxs)
         counts['empty_cols'] += len(empty_cols)
         counts['trimmed_blanks'] += trim_count
+        counts['orphans'] += orphan_count
 
-        modified = empty_row_idxs or empty_cols or trim_count
+        fixable = bool(empty_row_idxs or empty_cols or trim_count or orphan_count)
 
-        if modified and save_changes:
-            print("   Writing", pathname)
-            self.write_table(df, pathname)
+        if save_changes:
+            if empty_cols:
+                msgs.append('Dropping {} empty columns from table {}'.format(len(empty_cols), tbl_name))
+                df.drop(empty_cols, axis='columns', inplace=True)
 
-        return modified
+            if empty_row_idxs:
+                msgs.append('Dropping {} empty rows from table {}'.format(len(empty_row_idxs), tbl_name))
+                df.drop(empty_row_idxs, axis='index', inplace=True)
 
-    def clean_tables(self, val_dict, skip_dirs=None, trim_blanks=True,
-                     drop_empty_rows=True, drop_empty_cols=True,
-                     save_changes=True):
+            if fixable:
+                msgs.append("Writing table {} to '{}'".format(tbl_name, pathname))
+                self.write_table(df, pathname)
+
+        return (fixable, msgs)
+
+    def clean_tables(self, val_dict, skip_tables=None, skip_dir=None, check_unique=True,
+                     trim_blanks=True, drop_empty_rows=True, drop_empty_cols=True,
+                     delete_orphans=True, save_changes=True, print_msgs=True):
         """
         Fix common errors in CSV files, according the the keyword args given.
         Options include trim_blanks => remove blanks surrounding column names
@@ -604,46 +579,69 @@ class CsvDatabase(object):
         default, all options are True.
 
         :param val_dict: (Dict) validation dictionary loaded from validation.csv
-        :param skip_dirs: (list of str) directories to skip when cleaning
+        :param skip_tables: (list of str) names of tables to ignore
+        :param skip_dir: (str) directory to skip when cleaning
+        :param check_unique: (bool) whether to ensure that all key values are unique
         :param trim_blanks: (bool) whether to trim blanks surrounding column
             names and data values
         :param drop_empty_rows: (bool) whether to drop empty rows
         :param drop_empty_cols: (bool) whether to drop empty columns
-        :param save_changes: (bool) whether to write modifications back to the
-            table (CSV) file
+        :param delete_orphans: (bool) whether to drop rows orphaned by deletion of a foreign key.
+            (N.B., only rows in tables with validation_info.cascade_delete == True are deleted.)
+        :param save_changes: (bool) whether to write modifications back to the table's (CSV) file
+        :param print_msgs: (bool) whether to print error messages
         :return: (bool) whether any errors where found and fixed.
         """
-        counts = {'empty_rows': 0, 'empty_cols': 0, 'trimmed_blanks': 0}
+        counts = {'empty_rows': 0, 'empty_cols': 0, 'trimmed_blanks': 0, 'orphans' : 0}
 
+        all_msgs = []
         any_modified = False
+        skip_tables = skip_tables or []
 
-        for tblname in self.list_tables(skip_dirs):
-            modified = self.clean_table(tblname, counts,
-                                        trim_blanks=trim_blanks,
-                                        drop_empty_rows=drop_empty_rows,
-                                        drop_empty_cols=drop_empty_cols,
-                                        save_changes=save_changes)
-            any_modified = any_modified or modified
+        for tbl_name in self.list_tables(skip_dir):
+            if tbl_name in skip_tables:
+                continue
 
-        if any_modified:
+            modified, msgs = self.clean_table(tbl_name, val_dict, counts,
+                                              check_unique=check_unique,
+                                              trim_blanks=trim_blanks,
+                                              drop_empty_rows=drop_empty_rows,
+                                              drop_empty_cols=drop_empty_cols,
+                                              delete_orphans=delete_orphans,
+                                              save_changes=save_changes)
+            any_modified |= modified
+            all_msgs += msgs
+
+        if sum(counts.values()):
             def report(msg, key):
                 value = counts[key]
                 if value:
-                    print('  ', msg.format(value))
+                    print(' -', msg.format(value))
 
-            report("Removed empty rows from {} tables", 'empty_rows')
-            report("Removed empty cols from {} tables", 'empty_cols')
-            report("Trimmed blanks from {} values", 'trimmed_blanks')
+            print("Found errors:")
+            report("empty rows in {} tables", 'empty_rows')
+            report("empty cols in {} tables", 'empty_cols')
+            report("{} values needing blanks trimmed", 'trimmed_blanks')
+            report("{} orphaned rows", 'orphans')
 
+        if any_modified:
             if save_changes:
-                print("Database errors found and fixed - files have been modified")
+                print("*** Database errors found and fixed - files have been modified")
             else:
-                print("Database errors found but save_changes is False, so no files were modified")
-        else:
-            print("No common errors found.")
+                print("*** Database errors found but save_changes is False; csv files were NOT modified")
+
+        if print_msgs:
+            for msg in all_msgs:
+                print(msg)
+
+        if not (print_msgs or any_modified):
+            print("No errors found.")
+
+        return any_modified
 
 
-    def validate(self, pkg_name, save_changes=True, trim_blanks=True,
+    def validate(self, pkg_name, skip_tables=None, skip_dir=None,
+                 save_changes=True, trim_blanks=True,
                  drop_empty_rows=True, drop_empty_cols=True,
                  check_unique=True, delete_orphans=True):
 
@@ -655,28 +653,22 @@ class CsvDatabase(object):
         for tbl_name in shapes_file_map.keys():
             metadata[tbl_name] = CsvMetadata(tbl_name, data_table=True)
 
-        val_dict = self.read_validation_csv(pkg_name)
-
-        # print("Cleaning common errors in csvdb table files")
-
-        self.clean_tables(val_dict,
-                          skip_dirs='ShapeData',
-                          trim_blanks=trim_blanks,
-                          drop_empty_rows=drop_empty_rows,
-                          drop_empty_cols=drop_empty_cols,
-                          save_changes=save_changes)
-
-        # print("\nChecking self integrity")
-
+        # TBD: is this necessary here?
         # Assume all shape tables are "data tables", i.e., no "name" column is expected
         self.shapes.load_all(verbose=False)
 
-        msgs = self.check_tables(val_dict,
-                                 check_unique=check_unique,
-                                 save_changes=save_changes,
-                                 print_msgs=True)
-        if not msgs:
-            print("Database is clean")
+        val_dict = self.read_validation_csv(pkg_name)
+
+        self.clean_tables(val_dict,
+                          skip_dir=skip_dir,
+                          skip_tables=skip_tables,
+                          check_unique=check_unique,
+                          trim_blanks=trim_blanks,
+                          drop_empty_rows=drop_empty_rows,
+                          drop_empty_cols=drop_empty_cols,
+                          delete_orphans=delete_orphans,
+                          print_msgs=True,
+                          save_changes=save_changes)
 
         CsvDatabase.clear_cached_database()
 
