@@ -49,7 +49,10 @@ class ElectricStorage(TechMainCapitalCostLoader):
         super(ElectricStorage, self).show_costs()
         print('\n{} capital cost (energy)\n{}'.format(self.name, self.capcost_energy.timeseries()))
 
-
+class TechMainObj(TechMain):
+    def __init__(self, scenario=None):
+        super(TechMainObj, self).__init__(scenario)
+        self.init_from_db(None, scenario)
 
 def main():
     pathname = path.normpath(path.join(path.realpath(__file__), '..', '..', 'test.csvdb'))
@@ -57,7 +60,7 @@ def main():
     db = TestDatabase.get_database(pathname)
     scenario = None
 
-    obj = TechMain(None)
+    tech_main_obj = TechMainObj()
 
     map_keys = db.get_table("GeographyMapKeys")
     print("\nGeographyMapKeys:\n", map_keys.data)

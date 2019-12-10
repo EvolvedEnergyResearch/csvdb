@@ -1,0 +1,7 @@
+ONE,name
+HAS_KEY,name,value,desc
+NO_KEY,type,value,year
+TYPE,name,subtype
+SUBTYPE,name,input,value
+INPUT,name,cost
+TECH

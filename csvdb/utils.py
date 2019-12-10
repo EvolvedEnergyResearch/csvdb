@@ -16,8 +16,12 @@ def filter_query(df, filters):
     """
     Convert a dict of filters into a string query suitable for a DataFrame.
     """
+    if not filters:
+        return []
+
     conds = [col_match(attr, value) for attr, value in filters.items()]
     query = ' and '.join(conds)
+
     result = df.query(query)
     return result
 

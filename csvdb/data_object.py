@@ -136,9 +136,11 @@ class DataObject(object):
         md = tbl.metadata
 
         df = tbl.data
-        # Process key match as another filter
-        filters[md.key_col] = key
-        self.add_sensitivity_filter(key, filters)
+        if key is not None:
+            # Process key match as another filter
+            filters[md.key_col] = key
+            self.add_sensitivity_filter(key, filters)
+
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
@@ -193,8 +195,6 @@ class DataObject(object):
         return tup
 
     def init_from_db(self, key, scenario, **filters):
-        if key is None:
-            return
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
