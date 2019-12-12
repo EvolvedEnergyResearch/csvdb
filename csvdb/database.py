@@ -85,10 +85,6 @@ class CsvMetadata(object):
         self.table_name = table_name
         self.data_table = data_table
 
-        # TBD: for debugging breakpoint only
-        if table_name == 'TECH_MAIN':
-            pass
-
         if data_table:
             # ignore all other parameters, if any, to constructor
             self.key_col = None
@@ -191,7 +187,7 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
-                 output_tables=False, compile_sensitivities=False, filter_columns=None):
+                 output_tables=False, compile_sensitivities=False, filter_columns=None, pkg_name=None):
         """
         Initialize a CsvDatabase.
 
@@ -206,6 +202,7 @@ class CsvDatabase(object):
         :param output_tables: (bool)
         :param compile_sensitivities: (bool)
         :param filter_columns: (list of str)
+        :param pkg_name: (str) the name of the Python package containing the etc/validation.csv file.
         """
         self.pathname = pathname
         self.output_tables = output_tables
@@ -214,7 +211,9 @@ class CsvDatabase(object):
         # maps table names => file names under the database root folder
         self.file_map = {}
         self.filter_columns = filter_columns or []
-        self.val_dict = None    # stored when first read
+
+        self.pkg_name = pkg_name
+        self.val_dict = None         # stored when first read
 
         metadata = metadata or []
         self.metadata = {md.table_name : md for md in metadata}     # convert the list to a dict
@@ -517,7 +516,6 @@ class CsvDatabase(object):
                 if values:
                     bad = self.check_value_list(col_series, values)
                     if bad and delete_orphans:
-                        # TBD: needs to be recursive
                         msg = self.delete_orphans(tbl_name, df, val_info, bad, save_changes)
                         msgs.append(msg)
                         orphan_count += len(bad)
@@ -671,9 +669,15 @@ class CsvDatabase(object):
 
         CsvDatabase.clear_cached_database()
 
-    def read_validation_csv(self, pkg_name, use_cache=True):
+    def set_pkg_name(self, pkg_name):
+        self.pkg_name = pkg_name
+
+    def read_validation_csv(self, pkg_name=None, use_cache=True):
         """
-        Read and parse {package_dir}/etc/validation.csv.
+        Read and parse {package_dir}/etc/validation.csv. If pkg_name is not
+        passed in, it must be available in the CsvDatabase instance (self) or
+        an error is raised.
+
         If use_cache is True and the validation dict has been cached,
         return it. Otherwise, read it from the designated package, and
         if use_cache is True, store it in the CsvDatabase instance.
@@ -682,6 +686,10 @@ class CsvDatabase(object):
 
         if use_cache and self.val_dict:
             return self.val_dict
+
+        pkg_name = pkg_name or self.pkg_name
+        if not pkg_name:
+            raise CsvdbException("read_validation_csv: a package name was not provided as an argument or in the CsvDatabase instance")
 
         extra_inputs = 'additional_valid_inputs'
         col_names = ['table_name', 'column_name', 'not_null', 'linked_column', 'dtype', 'folder',
@@ -727,15 +735,16 @@ class CsvDatabase(object):
         return val_dict
 
     # This function is part of the API used by Excel GUI
-    def save_table(self, pkg_name, tbl_name, df, subdir=None,
+    def save_table(self, tbl_name, df, pkg_name=None, subdir=None,
                    validate=True, use_cache=True, extension='.csv'):
         """
         Save a dataframe as a database table.
 
-        :param pkg_name: (str) the name of the package to read validation data from,
-            e.g., 'energyPATHWAYS', 'RIO', etc.
         :param tbl_name: (str) the name of the table to write the CSV file
         :param df: (pandas.DataFrame) the data to write
+        :param pkg_name: (str) the name of the package to read validation data from,
+            e.g., 'energyPATHWAYS', 'RIO.riodb', etc. If not provided, the value set
+            in the database object is used. If none has been set, an error is raised.
         :param subdir: (str or None) path relative to dbdir in which to write the CSV file
         :param validate: (bool) whether to validate the data before writing
         :param use_cache: (bool) whether to reuse previously read validation data, if available.
@@ -750,3 +759,14 @@ class CsvDatabase(object):
             self.write_table(df, pathname)
 
         return errors
+
+    # This function is part of the API used by Excel GUI
+    def get_valid_options(self, tbl_name, column_name, pkg_name=None):
+        """
+        Get valid options for the given table and column, if any are defined in
+        the validation.csv for the current database. Otherwise, return None.
+        """
+        val_dict = self.read_validation_csv(pkg_name)
+        val_info = val_dict.get((tbl_name, column_name))
+        return val_info.values if val_info else None
+
