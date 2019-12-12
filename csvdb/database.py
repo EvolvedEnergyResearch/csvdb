@@ -767,6 +767,9 @@ class CsvDatabase(object):
         the validation.csv for the current database. Otherwise, return None.
         """
         val_dict = self.read_validation_csv(pkg_name)
-        val_info = val_dict.get((tbl_name, column_name))
+
+        # Try to get info on the specific table, if available, or fall back to generic column info
+        val_info = val_dict.get((tbl_name, column_name)) or val_dict.get(('', column_name))
+
         return val_info.values if val_info else None
 

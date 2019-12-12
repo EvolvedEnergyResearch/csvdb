@@ -22,8 +22,18 @@ def main():
     get_and_print('90% reduction by 2050')
     get_and_print('99% reduction by 2050')
 
-    values = db.get_valid_options('TYPE', 'name', pkg_name='test2')
-    print("Valid options for TYPE.name:", values)
+    db.set_pkg_name('test2')
+
+    def test_get_valid_options(tbl, col):
+        values = db.get_valid_options(tbl, col)
+        print("Valid options for {}.{}: {}".format(tbl, col, values))
+
+    test_get_valid_options('TYPE', 'name')
+
+    # test fallback to generic column info
+    test_get_valid_options('EMISSIONS_CONSTRAINT', 'value')
+
+    test_get_valid_options('NonExistent', 'colname')
 
 if __name__ == '__main__':
     main()
