@@ -7,9 +7,9 @@ _Metadata = [
                 key_col='name',
                 drop_cols=['desc']),
 
-    CsvMetadata('NO_KEY',
+    CsvMetadata('EMISSIONS_CONSTRAINT',
                 has_key_col=False,
-                df_cols=['type', 'year', 'sensitivity']),
+                df_cols=['sensitivity', 'year', 'gau', 'value']),
 
     CsvMetadata('TYPE'),
 

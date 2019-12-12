@@ -125,7 +125,7 @@ class DataObject(object):
         md = tbl.metadata
         index_cols = [c for c in md.df_cols if c not in md.df_value_col]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
-        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
+        timeseries.loc[:, index_cols].fillna('_empty_', inplace=True)
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries
 
@@ -157,8 +157,9 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique())!=1]
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[[md.key_col]+columns_with_non_unique_values]))
+            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
+            cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
+            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
 
         timeseries = matches[md.df_cols]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty

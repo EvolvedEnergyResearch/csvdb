@@ -1,6 +1,6 @@
 ONE,name
 HAS_KEY,name,value,desc
-NO_KEY,type,value,year
+EMISSIONS_CONSTRAINT,name,source,notes,geography,gau,unit,interpolation_method,extrapolation_method,geography_map_key,year,value,sensitivity
 TYPE,name,subtype
 SUBTYPE,name,input,value
 INPUT,name,cost

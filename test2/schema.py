@@ -6,6 +6,49 @@ from csvdb.data_object import DataObject # superclass of generated classes
 
 _Module = sys.modules[__name__]  # get ref to our own module object
 
+class EmissionsConstraint(DataObject):
+    _instances_by_key = {}
+    _table_name = "EMISSIONS_CONSTRAINT"
+    _key_col = None
+    _cols = ["extrapolation_method", "geography", "geography_map_key", "interpolation_method", "notes",
+             "source", "unit"]
+    _df_cols = ["sensitivity", "year", "gau", "value"]
+    _df_filters = []
+    _data_table_name = None
+
+    def __init__(self, scenario):
+        DataObject.__init__(self, None, scenario)
+
+        EmissionsConstraint._instances_by_key[self._key] = self
+
+        self.extrapolation_method = None
+        self.geography = None
+        self.geography_map_key = None
+        self.interpolation_method = None
+        self.notes = None
+        self.source = None
+        self.unit = None
+
+    def set_args(self, scenario, extrapolation_method=None, geography=None, geography_map_key=None,
+                 interpolation_method=None, notes=None, source=None, unit=None):
+        self.check_scenario(scenario)
+
+        self.extrapolation_method = extrapolation_method
+        self.geography = geography
+        self.geography_map_key = geography_map_key
+        self.interpolation_method = interpolation_method
+        self.notes = notes
+        self.source = source
+        self.unit = unit
+
+    def init_from_tuple(self, tup, scenario, **kwargs):    
+        (source, notes, geography, unit, interpolation_method, extrapolation_method,
+         geography_map_key,) = tup
+
+        self.set_args(scenario, extrapolation_method=extrapolation_method, geography=geography,
+                  geography_map_key=geography_map_key, interpolation_method=interpolation_method,
+                  notes=notes, source=source, unit=unit)
+
 class HasKey(DataObject):
     _instances_by_key = {}
     _table_name = "HAS_KEY"
@@ -29,7 +72,7 @@ class HasKey(DataObject):
         self.name = name
         self.value = value
 
-    def init_from_tuple(self, tup, scenario, **kwargs):
+    def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, value,) = tup
 
         self.set_args(scenario, name=name, value=value)
@@ -57,38 +100,10 @@ class INPUT(DataObject):
         self.cost = cost
         self.name = name
 
-    def init_from_tuple(self, tup, scenario, **kwargs):
+    def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, cost,) = tup
 
         self.set_args(scenario, cost=cost, name=name)
-
-class NoKey(DataObject):
-    _instances_by_key = {}
-    _table_name = "NO_KEY"
-    _key_col = None
-    _cols = ["sensitivity", "value"]
-    _df_cols = ["type", "year"]
-    _df_filters = []
-    _data_table_name = None
-
-    def __init__(self, scenario):
-        DataObject.__init__(self, None, scenario)
-
-        NoKey._instances_by_key[self._key] = self
-
-        self.sensitivity = None
-        self.value = None
-
-    def set_args(self,  scenario, sensitivity=None, value=None):
-        self.check_scenario(scenario)
-
-        self.sensitivity = sensitivity
-        self.value = value
-
-    def init_from_tuple(self, tup, scenario, **kwargs):
-        (value, sensitivity,) = tup
-
-        self.set_args(scenario, sensitivity=sensitivity, value=value)
 
 class SUBTYPE(DataObject):
     _instances_by_key = {}
@@ -113,7 +128,7 @@ class SUBTYPE(DataObject):
         self.name = name
         self.value = value
 
-    def init_from_tuple(self, tup, scenario, **kwargs):
+    def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, value,) = tup
 
         self.set_args(scenario, name=name, value=value)
@@ -141,7 +156,7 @@ class TYPE(DataObject):
         self.name = name
         self.subtype = subtype
 
-    def init_from_tuple(self, tup, scenario, **kwargs):
+    def init_from_tuple(self, tup, scenario, **kwargs):    
         (name, subtype,) = tup
 
         self.set_args(scenario, name=name, subtype=subtype)

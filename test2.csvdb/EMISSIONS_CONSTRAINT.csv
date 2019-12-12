@@ -1,0 +1,11 @@
+source,notes,geography,gau,unit,interpolation_method,extrapolation_method,geography_map_key,year,value,sensitivity
+,,state,california,metric_ton,linear_interpolation,nearest,,2018,100000000,
+,,state,california,metric_ton,linear_interpolation,nearest,,2050,1000000,
+,,state,california,metric_ton,linear_interpolation,nearest,,2018,100000000,90% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2050,10000000,90% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2018,100000000,99% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2050,1000000,99% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2018,100000000,50% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2050,50000000,50% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2018,100000000,80% reduction by 2050
+,,state,california,metric_ton,linear_interpolation,nearest,,2050,20000000,80% reduction by 2050

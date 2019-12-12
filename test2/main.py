@@ -4,20 +4,24 @@ from os import path
 from schema import *
 from testdb import Test2Database
 
-class Keyless(NoKey):
+class EmissionsCons(EmissionsConstraint):
     def __init__(self, scenario=None):
-        super(Keyless, self).__init__(scenario)
+        super(EmissionsCons, self).__init__(scenario)
         filters = {'sensitivity': scenario}
         self.init_from_db(None, scenario, **filters)
+
+def get_and_print(scenario):
+    obj = EmissionsCons(scenario=scenario)
+    print("\nEMISSIONS_CONSTRAINT ({})\n".format(scenario), obj.raw_values)
+
 
 def main():
     pathname = path.normpath(path.join(path.realpath(__file__), '..', '..','test2.csvdb'))
     db = Test2Database.get_database(pathname)
 
-    obj = Keyless(scenario='S2')
-
-    no_key = db.get_table("NO_KEY")
-    print("\nNO_KEY\n", no_key.data)
+    get_and_print('50% reduction by 2050')
+    get_and_print('90% reduction by 2050')
+    get_and_print('99% reduction by 2050')
 
 if __name__ == '__main__':
     main()
