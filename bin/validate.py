@@ -68,7 +68,7 @@ def create_schema_file(dbdir, schema_file):
                     schema.write(csvFile + ',')         # insert CSV basename in first column
                     schema.write(header + '\n')         # ensure consistent line endings
 
-def update_from_schema(dbdir, schema_file, run, verbose):
+def update_from_schema(dbdir, schema_file, run):
     file_map = create_file_map(dbdir)
 
     with open(schema_file, 'r') as schema:
@@ -100,11 +100,7 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 
         target_cols = header.split(',')
 
-        if target_cols == source_cols:
-            if verbose:
-                print('{}: OK'.format(relpath))
-
-        else:
+        if target_cols != source_cols:
             source_cols = [col.strip() for col in source_cols]
             target_cols = [col.strip() for col in target_cols]
 
@@ -139,7 +135,7 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 @click.argument('pkg_name', type=str)
 
 @click.option('--all', '-a', is_flag=True, default=False,
-              help='Shorthand for --trim-blanks --drop-empty --delete-orphans --check-unique')
+              help='Shorthand for --trim-blanks --drop-empty --check-unique')
 
 @click.option('--trim-blanks', '-b', is_flag=True, default=False,
               help='Trim blanks surrounding column names and data values')
@@ -174,18 +170,15 @@ def update_from_schema(dbdir, schema_file, run, verbose):
 @click.option('--validate', '-v', is_flag=True, default=False,
               help='Validate the database based on validation.csv in the named package.')
 
-@click.option('--verbose', '-V', is_flag=True, default=False,
-              help='Print confirmations of files whose schemas match')
-
 def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
          schema_file, create_schema, delete_orphans, update_schema, save_changes,
-         check_unique, validate, verbose):
+         check_unique, validate):
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
 
     if all:
-        drop_empty = trim_blanks = delete_orphans = check_unique = True
+        drop_empty = trim_blanks = check_unique = True
 
     if drop_empty:
         drop_empty_rows = drop_empty_cols = True
@@ -197,9 +190,10 @@ def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, dr
         create_schema_file(dbdir, schema_file)
 
     if update_schema:
-        update_from_schema(dbdir, schema_file, save_changes, verbose)
+        update_from_schema(dbdir, schema_file, save_changes)
 
     if validate:
+        db = None
         try:
             package = importlib.import_module(pkg_name)
             cls = package.database_class()

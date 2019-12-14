@@ -120,6 +120,8 @@ class ShapeDataMgr(object):
         if self.slices:
             return self.slices
 
+        verbose and print("Reading shape data:")
+
         for shape_name, filename in self.file_map.items():
             if type(filename) is not list:
                 filename = [filename]
@@ -127,8 +129,7 @@ class ShapeDataMgr(object):
             for fn in filename:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
                 with openFunc(fn, 'rb') as f:
-                    if verbose:
-                        print("Reading shape data for {}".format(shape_name))
+                    verbose and print(" -", shape_name)
                     df = pd.read_csv(f, index_col=None)
                     if SENSITIVITY_COL in df.columns:
                         df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
@@ -140,6 +141,8 @@ class ShapeDataMgr(object):
                             df = None
                     dfs.append(df)
             self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
+
+        verbose and print("Done.")
 
     @classmethod
     def create_file_map(cls, db_path):
@@ -476,8 +479,16 @@ class CsvDatabase(object):
             if key_cols:
                 # extract key columns as tuples to check for uniqueness
                 combo_keys = [tup for tup in df[key_cols].itertuples(name=None, index=False)]
+
                 if len(combo_keys) != len(set(combo_keys)):
-                    msgs.append("Duplicate keys found in table {} for df_cols {}".format(tbl_name, key_cols))
+                    msgs.append("Duplicate keys found in table {} for df_cols {}:".format(tbl_name, key_cols))
+                    reported = {}
+                    prev = None
+                    for key in sorted(combo_keys):
+                        if prev == key and not key in reported:
+                            reported[key] = 1
+                            msgs.append(" - {}".format(key))
+                        prev = key
 
         empty_row_idxs = []
         empty_cols = []
@@ -595,9 +606,14 @@ class CsvDatabase(object):
         any_modified = False
         skip_tables = skip_tables or []
 
+        print_msgs and print("\nCleaning tables:")
+
         for tbl_name in self.list_tables(skip_dir):
             if tbl_name in skip_tables:
                 continue
+
+            #print_msgs and print(".", end='')
+            print_msgs and print(" -", tbl_name)
 
             modified, msgs = self.clean_table(tbl_name, val_dict, counts,
                                               check_unique=check_unique,
@@ -609,6 +625,9 @@ class CsvDatabase(object):
             any_modified |= modified
             all_msgs += msgs
 
+
+        print_msgs and print('Done.\n')
+
         if sum(counts.values()):
             def report(msg, key):
                 value = counts[key]
@@ -616,16 +635,16 @@ class CsvDatabase(object):
                     print(' -', msg.format(value))
 
             print("Found errors:")
-            report("empty rows in {} tables", 'empty_rows')
-            report("empty cols in {} tables", 'empty_cols')
-            report("{} values needing blanks trimmed", 'trimmed_blanks')
-            report("{} orphaned rows", 'orphans')
+            drop_empty_rows and report("empty rows in {} tables", 'empty_rows')
+            drop_empty_cols and report("empty cols in {} tables", 'empty_cols')
+            trim_blanks     and report("{} values needing blanks trimmed", 'trimmed_blanks')
+            delete_orphans  and report("{} orphaned rows", 'orphans')
 
         if any_modified:
             if save_changes:
-                print("*** Database errors found and fixed - files have been modified")
+                print("\n*** Database errors found and fixed - files have been modified")
             else:
-                print("*** Database errors found but save_changes is False; csv files were NOT modified")
+                print("\n*** Database errors found but save_changes is False; csv files were NOT modified")
 
         if print_msgs:
             for msg in all_msgs:
@@ -652,7 +671,7 @@ class CsvDatabase(object):
 
         # TBD: is this necessary here?
         # Assume all shape tables are "data tables", i.e., no "name" column is expected
-        self.shapes.load_all(verbose=False)
+        self.shapes.load_all(verbose=True)
 
         val_dict = self.read_validation_csv(pkg_name)
 
