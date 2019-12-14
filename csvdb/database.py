@@ -125,6 +125,7 @@ class ShapeDataMgr(object):
         for shape_name, filename in self.file_map.items():
             if type(filename) is not list:
                 filename = [filename]
+                
             dfs = []
             for fn in filename:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
@@ -140,6 +141,7 @@ class ShapeDataMgr(object):
                         else:
                             df = None
                     dfs.append(df)
+
             self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
 
         verbose and print("Done.")
@@ -612,7 +614,6 @@ class CsvDatabase(object):
             if tbl_name in skip_tables:
                 continue
 
-            #print_msgs and print(".", end='')
             print_msgs and print(" -", tbl_name)
 
             modified, msgs = self.clean_table(tbl_name, val_dict, counts,
