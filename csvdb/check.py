@@ -16,7 +16,7 @@ def str_to_bool(value):
 def _check_bool(series, nullable):
     bad = []
 
-    for i, value in series.items():
+    for i, value in series.iteritems():
         if value is None and nullable:
             continue
 
@@ -28,7 +28,7 @@ def _check_bool(series, nullable):
 def _check_type(series, aType, nullable):
     bad = []
 
-    for i, value in series.items():
+    for i, value in series.iteritems():
         if value is None and nullable:
             continue
         try:
