@@ -125,7 +125,7 @@ class ShapeDataMgr(object):
         for shape_name, filename in self.file_map.items():
             if type(filename) is not list:
                 filename = [filename]
-                
+
             dfs = []
             for fn in filename:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
@@ -469,7 +469,7 @@ class CsvDatabase(object):
         msgs = []
 
         if len(df) == 0:
-            msgs.append("Skipping empty table {}".format(tbl_name))
+            msgs.append("\nSkipping empty table {}".format(tbl_name))
             return (fixable, msgs)
 
         if check_unique:
@@ -483,7 +483,7 @@ class CsvDatabase(object):
                 combo_keys = [tup for tup in df[key_cols].itertuples(name=None, index=False)]
 
                 if len(combo_keys) != len(set(combo_keys)):
-                    msgs.append("Duplicate keys found in table {} for df_cols {}:".format(tbl_name, key_cols))
+                    msgs.append("\nDuplicate keys found in table {} for df_cols {}:".format(tbl_name, key_cols))
                     reported = {}
                     prev = None
                     for key in sorted(combo_keys):
