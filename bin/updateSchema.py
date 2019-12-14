@@ -38,7 +38,7 @@ def create_file_map(dbdir):
     prefixLen = len(dbdir) + 1
 
     for dirpath, dirnames, filenames in os.walk(dbdir, topdown=False):
-        if os.path.basename(dirpath) == SHAPE_DIR:
+        if SHAPE_DIR in dirpath:
             continue
 
         for filename in filenames:
