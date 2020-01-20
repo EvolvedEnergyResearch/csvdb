@@ -94,7 +94,7 @@ class ShapeDataMgr(object):
                 openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
                 with openFunc(fn, 'rb') as f:
                     if verbose:
-                        print("Reading shape data for {}".format(shape_name))
+                        print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
                     df = pd.read_csv(f, index_col=None)
                     if SENSITIVITY_COL in df.columns:
                         df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
@@ -131,6 +131,9 @@ class ShapeDataMgr(object):
         for shape_csv_dir in shape_csv_dirs:
             shape_files_zip = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv.gz'))
             shape_files_csv = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv'))
+            # avoid duplicates for csv and zip files
+            zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
+            shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
             basename = os.path.basename(shape_csv_dir)
             shape_name = basename.split('.')[0]
             if len(shape_files_zip + shape_files_csv):
