@@ -125,7 +125,7 @@ class DataObject(object):
         md = tbl.metadata
         index_cols = [c for c in md.df_cols if c not in md.df_value_col]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
-        timeseries.loc[:, index_cols].fillna('_empty_', inplace=True)
+        timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries
 

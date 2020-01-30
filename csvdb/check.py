@@ -5,6 +5,7 @@ import os
 import types
 from .error import CsvdbException, ValidationFormatError
 import pdb
+import numpy as np
 
 _True  = ['t', 'y', 'true',  'yes', 'on']
 _False = ['f', 'n', 'false', 'no',  'off']
@@ -20,7 +21,7 @@ def _check_bool(series, nullable):
         if value is None and nullable:
             continue
 
-        if not isinstance(value, types.StringTypes) or value.lower() not in _Bool:
+        if not isinstance(value, (bool, np.bool_)) and (not isinstance(value, types.StringTypes) or value.lower() not in _Bool):
             bad.append((i, value))
 
     return bad

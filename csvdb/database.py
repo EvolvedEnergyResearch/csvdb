@@ -130,7 +130,8 @@ class ShapeDataMgr(object):
             for fn in filename:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
                 with openFunc(fn, 'rb') as f:
-                    verbose and print(" -", shape_name)
+                    if verbose:
+                        print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
                     df = pd.read_csv(f, index_col=None)
                     if SENSITIVITY_COL in df.columns:
                         df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
@@ -170,6 +171,9 @@ class ShapeDataMgr(object):
         for shape_csv_dir in shape_csv_dirs:
             shape_files_zip = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv.gz'))
             shape_files_csv = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv'))
+            # avoid duplicates for csv and zip files
+            zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
+            shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
             basename = os.path.basename(shape_csv_dir)
             shape_name = basename.split('.')[0]
             if len(shape_files_zip + shape_files_csv):
@@ -379,10 +383,11 @@ class CsvDatabase(object):
         if len(series) == 0:
             return None
 
-        values = [val.lower() if val and isinstance(val, types.StringTypes) else val for val in values]
+        # this doesn't work when it's lower case, we actually want to match case, whatever that case may be
+        # values = [val.lower() if val and isinstance(val, types.StringTypes) else val for val in values]
 
         for val in series.unique():
-            test_value = val.lower() if val and isinstance(val, types.StringTypes) else val
+            test_value = val if val and isinstance(val, types.StringTypes) else val
             if test_value not in values:
                 bad += [(i, val) for i in series[series == test_value].index]
 
@@ -440,7 +445,8 @@ class CsvDatabase(object):
         if not isinstance(data, pd.DataFrame):
             data = pd.DataFrame(data)
 
-        data.to_csv(pathname, index=None, compression='infer')
+        compression = None # replace this with 'infer' once we update to the new version of pandas
+        data.to_csv(pathname, index=None, compression=compression)
 
     def clean_table(self, tbl_name, val_dict, counts,
                     data=None,
@@ -464,7 +470,7 @@ class CsvDatabase(object):
         pathname = self.file_map[tbl_name]
 
         tbl = self.get_table(tbl_name)
-        df = data or tbl.data
+        df = tbl.data if data is None else data
 
         msgs = []
 
@@ -660,19 +666,20 @@ class CsvDatabase(object):
     def validate(self, pkg_name, skip_tables=None, skip_dir=None,
                  save_changes=True, trim_blanks=True,
                  drop_empty_rows=True, drop_empty_cols=True,
-                 check_unique=True, delete_orphans=True):
+                 check_unique=True, include_shapes=False, delete_orphans=True):
 
         dbdir = self.pathname
 
-        # Add shape tables to metadata
-        shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
-        metadata = self.metadata
-        for tbl_name in shapes_file_map.keys():
-            metadata[tbl_name] = CsvMetadata(tbl_name, data_table=True)
+        if include_shapes:
+            # Add shape tables to metadata
+            shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
+            metadata = self.metadata
+            for tbl_name in shapes_file_map.keys():
+                metadata[tbl_name] = CsvMetadata(tbl_name, data_table=True)
 
-        # TBD: is this necessary here?
-        # Assume all shape tables are "data tables", i.e., no "name" column is expected
-        self.shapes.load_all(verbose=True)
+            # TBD: is this necessary here?
+            # Assume all shape tables are "data tables", i.e., no "name" column is expected
+            self.shapes.load_all(verbose=True)
 
         val_dict = self.read_validation_csv(pkg_name)
 
@@ -755,28 +762,28 @@ class CsvDatabase(object):
         return val_dict
 
     # This function is part of the API used by Excel GUI
-    def save_table(self, tbl_name, df, pkg_name=None, subdir=None,
+    def save_table(self, tbl_name, df, path, pkg_name=None,
                    validate=True, use_cache=True, extension='.csv'):
         """
         Save a dataframe as a database table.
 
         :param tbl_name: (str) the name of the table to write the CSV file
         :param df: (pandas.DataFrame) the data to write
+        :param path: (str) where to write the CSV file
         :param pkg_name: (str) the name of the package to read validation data from,
             e.g., 'energyPATHWAYS', 'RIO.riodb', etc. If not provided, the value set
             in the database object is used. If none has been set, an error is raised.
-        :param subdir: (str or None) path relative to dbdir in which to write the CSV file
         :param validate: (bool) whether to validate the data before writing
         :param use_cache: (bool) whether to reuse previously read validation data, if available.
         :param extension: (str) Either '.csv' or '.csv.gz', default is '.csv'
         :return: a list of error strings, or an empty list if no errors.
         """
         val_dict = self.read_validation_csv(pkg_name, use_cache=use_cache)
-        errors = self.check_table(tbl_name, val_dict, data=df, check_unique=True) if validate else None
+        counts = {'empty_rows': 0, 'empty_cols': 0, 'trimmed_blanks': 0, 'orphans': 0}
+        errors = self.clean_table(tbl_name, val_dict, counts, data=df, check_unique=True, delete_orphans=False, trim_blanks=False, drop_empty_rows=False, drop_empty_cols=False, save_changes=False) if validate else None
 
-        if not errors:
-            pathname = os.path.join(self.pathname, subdir or '', tbl_name + extension)
-            self.write_table(df, pathname)
+        if not len(errors[1]):
+            self.write_table(df, path)
 
         return errors
 

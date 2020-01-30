@@ -161,6 +161,9 @@ def update_from_schema(dbdir, schema_file, run):
 @click.option('--update-schema', '-u', is_flag=True, default=False,
               help='Update schema from info in schema-file')
 
+@click.option('--include-shapes', '-p', is_flag=True, default=False,
+              help='Include shapes in the validation and error checking')
+
 @click.option('--save-changes/--no-save-changes', default=False,
               help='Whether to write changed data back to the CSV files. Default is --no-save-changes.')
 
@@ -171,7 +174,7 @@ def update_from_schema(dbdir, schema_file, run):
               help='Validate the database based on validation.csv in the named package.')
 
 def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
-         schema_file, create_schema, delete_orphans, update_schema, save_changes,
+         schema_file, create_schema, delete_orphans, update_schema, include_shapes, save_changes,
          check_unique, validate):
 
     if update_schema and create_schema:
@@ -212,6 +215,7 @@ def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, dr
                         drop_empty_rows=drop_empty_rows,
                         drop_empty_cols=drop_empty_cols,
                         check_unique=check_unique,
+                        include_shapes=include_shapes,
                         delete_orphans=delete_orphans)
 
 
