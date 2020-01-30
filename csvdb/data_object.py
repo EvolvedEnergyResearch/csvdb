@@ -172,6 +172,12 @@ class DataObject(object):
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
+                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
+            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
+                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
             if 'oth_1' in timeseries.index.names:
                 assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
@@ -202,7 +208,6 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-
         if md.df_cols:
             tup = self.load_timeseries(key, **filters)
         else:
