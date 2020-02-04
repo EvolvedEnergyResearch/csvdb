@@ -176,6 +176,13 @@ def update_from_schema(dbdir, schema_file, run):
 def main(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
          schema_file, create_schema, delete_orphans, update_schema, include_shapes, save_changes,
          check_unique, validate):
+    main_fun(dbdir, pkg_name, all, trim_blanks, drop_empty_rows, drop_empty_cols, drop_empty,
+         schema_file, create_schema, delete_orphans, update_schema, include_shapes, save_changes,
+         check_unique, validate)
+
+def main_fun(dbdir, pkg_name, all=False, trim_blanks=False, drop_empty_rows=False, drop_empty_cols=False, drop_empty=False,
+         schema_file=None, create_schema=False, delete_orphans=False, update_schema=False, include_shapes=False, save_changes=False,
+         check_unique=False, validate=False):
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
