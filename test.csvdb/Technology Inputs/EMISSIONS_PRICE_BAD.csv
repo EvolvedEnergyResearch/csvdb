@@ -1,0 +1,5 @@
+source,notes,geography,gau,currency,currency_year,unit,interpolation_method,extrapolation_method,geography_map_key,year,value,sensitivity
+,,global,all,usd,2016,tonne,linear_interpolation,nearest,,2020,0,high price
+,,global,all,usd,2016,tonne,linear_interpolation,nearest,,2050,500,high price
+,,global,all,usd,2016,tonne,linear_interpolation,nearest,,2020,0,
+,,global,all,usd,2016,tonne,linear_interpolation,nearest,,2050,0,

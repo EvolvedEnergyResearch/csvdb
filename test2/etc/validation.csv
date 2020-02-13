@@ -1,0 +1,8 @@
+table_name,column_name,not_null,linked_column,dtype,folder,referenced_table,referenced_field,cascade_delete,additional_valid_inputs,_c_10,_c_11,_c_12
+,value,TRUE,,float,,,,,,,,
+,year,,,int,,,,,,,,
+,cost,,,float,,,,,,,,
+TYPE,name,TRUE,,,,,,TRUE,type1,type2,type3,type4
+TYPE,subtype,TRUE,,,,SUBTYPE,name,,,,,
+SUBTYPE,input,TRUE,,,,INPUT,name,TRUE,,,,
+INPUT,name,TRUE,,,,,,,,,,

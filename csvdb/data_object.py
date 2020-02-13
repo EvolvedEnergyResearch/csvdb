@@ -52,14 +52,6 @@ def str_to_id(text):
 def get_database(pathname=None):
     return CsvDatabase.get_database(pathname)
 
-# Deprecated?
-# def _isListOfNoneOrNan(obj):
-#     if len(obj) != 1:
-#         return False
-#
-#     item = obj[0]
-#     return item is None or (isinstance(item, float) and np.isnan(item))
-
 
 class DataObject(object):
     # dict keyed by class object; value is list of instances of the class
@@ -84,7 +76,12 @@ class DataObject(object):
         self.raw_values = None
 
     def __str__(self):
-        return "<{} {}='{}'>".format(self.__class__.__name__, self._key_col, self._key)
+        cls_name = self.__class__.__name__
+        key_col = self._key_col
+
+        s = "<{} (no key col)>".format(cls_name) if key_col is None else "<{} {}='{}'>".format(cls_name, key_col, self._key)
+        return s
+
 
     @classmethod
     def load_from_db(cls, key, scenario, **filters):
@@ -139,9 +136,11 @@ class DataObject(object):
         md = tbl.metadata
 
         df = tbl.data
-        # Process key match as another filter
-        filters[md.key_col] = key
-        self.add_sensitivity_filter(key, filters)
+        if key is not None:
+            # Process key match as another filter
+            filters[md.key_col] = key
+            self.add_sensitivity_filter(key, filters)
+
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
@@ -158,8 +157,9 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique())!=1]
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[[md.key_col]+columns_with_non_unique_values]))
+            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
+            cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
+            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
 
         timeseries = matches[md.df_cols]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
@@ -202,8 +202,6 @@ class DataObject(object):
         return tup
 
     def init_from_db(self, key, scenario, **filters):
-        if key is None:
-            return
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
@@ -255,32 +253,3 @@ class DataObject(object):
     def check_scenario(self, scenario):
         if scenario != self._scenario:
             raise CsvdbException("DataObject: mismatch between caller's scenario ({}) and self._scenario ({})".format(scenario, self._scenario))
-
-    # TODO: Imported from EP. Not sure if it will remain.
-    # Caller gets mapped cols via "from .text_mappings import MappedCols"
-    def map_strings(self, df, mapped_cols, drop_str_cols=True):
-        tbl_name = self._data_table_name
-
-        strmap = StringMap.getInstance()
-        str_cols = mapped_cols.get(tbl_name, [])
-
-        for col in str_cols:
-            # Ensure that all values are in the StringMap
-            values = df[col].unique()
-            for value in values:
-                strmap.store(value)
-
-            # mapped column "foo" becomes "foo_id"
-            id_col = col + '_id'
-
-            # Force string cols to str and replace 'nan' with None
-            df[col] = df[col].astype(str)
-            df.loc[df[col] == 'nan', col] = None
-
-            # create a column with integer ids
-            df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
-
-        if drop_str_cols:
-            df.drop(str_cols, axis=1, inplace=True)
-
-        return df

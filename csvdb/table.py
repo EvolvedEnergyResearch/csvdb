@@ -15,7 +15,7 @@ SENSITIVITY_COL = 'sensitivity'
 
 Verbose = False
 
-_bad_chars = re.compile('[\.:\ ]+')
+_bad_chars = re.compile('[.: ]+')
 
 def clean_col_name(name):
     'Replace problematic chars in column names with underscores'
@@ -32,6 +32,7 @@ class CsvTable(object):
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
         self.filter_columns = filter_columns or []
         self.data_class = None
+
         self.load_all()
 
     def _compute_metadata(self):
@@ -42,29 +43,33 @@ class CsvTable(object):
         tbl_name = self.name
         all_cols = self.get_columns()
 
-        key_col    = md.key_col
-        df_cols    = md.df_cols
-        drop_cols  = md.drop_cols + self.filter_columns
+        key_col   = md.key_col
+        df_cols   = md.df_cols
+        drop_cols = md.drop_cols + self.filter_columns
+        non_attr_cols = []
 
         if not md.attr_cols:
             non_attr_cols = df_cols + drop_cols
-            md.attr_cols = attr_cols = [col for col in all_cols if col not in non_attr_cols]
+            md.attr_cols = [col for col in all_cols if col not in non_attr_cols]
+
+        attr_cols = md.attr_cols
 
         # verify that key col is included in the the attr cols
-        if key_col not in attr_cols:
-            raise Exception("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
+        if md.has_key_col and key_col not in attr_cols:
+            raise CsvdbException("Table {}: key_col '{}' is not present in attr_cols {}".format(tbl_name, key_col, sorted(attr_cols)))
 
         # verify that all specified cols are present
         specified_cols = set(attr_cols + non_attr_cols)
         missing = specified_cols - set(all_cols)
         if missing:
-            raise Exception("Table {}: cols {} are not present in table".format(tbl_name, sorted(missing)))
+            raise CsvdbException("Table {}: cols {} are not present in table".format(tbl_name, sorted(missing)))
 
     def _compute_output_metadata(self):
         md = self.metadata
         if md.data_table:
             return
-        tbl_name = self.name
+
+        # tbl_name = self.name
         all_cols =  [x for x in self.get_columns() if x not in self.filter_columns]
         md.key_col = None
         md.df_value_col = ['value']
@@ -76,7 +81,7 @@ class CsvTable(object):
         md = self.metadata
         if md.data_table:
             return
-        tbl_name = self.name
+        # tbl_name = self.name
         all_cols = self.get_columns()
         md.key_col = md.key_col
         md.df_value_col = ['sensitivity']
@@ -110,9 +115,11 @@ class CsvTable(object):
             openFunc = gzip.open if fn.endswith('.gz') else open
             with openFunc(fn, 'rb') as f:
                 dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values=''))
-        unique_columns = set([tuple(df.columns) for df in dfs])
-        if len(unique_columns)>1:
-            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns))
+
+        unique_columns_tups = set([tuple(df.columns) for df in dfs])
+        if len(unique_columns_tups) > 1:
+            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_tups))
+
         self.data = df = pd.concat(dfs)
 
         # TODO: skip this given data cleaning methods?
@@ -145,6 +152,7 @@ class CsvTable(object):
         if self.has_sensitivity_col(df):
             s = df[SENSITIVITY_COL]
             s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
+
         elif self.compile_sensitivities:
             # if the data doesn't have a sensitivity column and we are compiling sensitivities, data is just None
             self.data = None
@@ -153,17 +161,22 @@ class CsvTable(object):
         # Convert all remaining NaN values to None (N.B. can't do inplace with non nan value)
         if self.output_table:
             df = df.set_index([c for c in md.df_cols if c not in md.df_value_col]).sort_index()
+
         elif self.compile_sensitivities:
             df = df[md.df_cols]
             df = df.rename(columns={md.key_col:'name'})
+
             for filter_num, filter in enumerate(md.df_filters):
-                df[filter] = filter+':'+df[filter]
+                df[filter] = filter + ':' + df[filter]
                 df = df.rename(columns={filter: 'filter{}'.format(filter_num+1)})
+
             df = df.drop_duplicates()
+
         self.data = df = df.where(pd.notnull(df), other=None)
         drop_cols = [x for x in self.filter_columns if x in self.data.columns]
-        for x in drop_cols:
-            self.data.drop(x,axis=1,inplace=True)
+        if drop_cols:
+            self.data.drop(drop_cols, axis='columns', inplace=True)
+
         rows, cols = df.shape
         if Verbose:
             print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
