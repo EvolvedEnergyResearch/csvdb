@@ -32,7 +32,6 @@ class CsvTable(object):
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
         self.filter_columns = filter_columns or []
         self.data_class = None
-
         self.load_all()
 
     def _compute_metadata(self):
@@ -85,7 +84,7 @@ class CsvTable(object):
         all_cols = self.get_columns()
         md.key_col = md.key_col
         md.df_value_col = ['sensitivity']
-        md.df_cols = [md.key_col] + md.df_filters + md.df_value_col
+        md.df_cols = ([md.key_col] if md.key_col else []) + md.df_filters + md.df_value_col
         md.attr_cols = None
         md.drop_cols = [col for col in all_cols if col not in md.df_cols]
 
