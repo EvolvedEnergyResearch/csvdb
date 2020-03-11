@@ -6,6 +6,7 @@ import importlib
 import os
 import pandas as pd
 import re
+import pdb
 
 from .database import SHAPE_DIR, CSV_PATTERN, ZIP_PATTERN
 from .error import ValidationUsageError
@@ -39,7 +40,7 @@ def create_file_map(dbdir):
     prefixLen = len(dbdir) + 1
 
     for dirpath, dirnames, filenames in os.walk(dbdir, topdown=False):
-        if os.path.basename(dirpath) == SHAPE_DIR:
+        if SHAPE_DIR in dirpath:
             continue
 
         for filename in filenames:
