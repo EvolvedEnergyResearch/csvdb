@@ -25,7 +25,7 @@ import os
 import pandas as pd
 import re
 from .error import CsvdbException, ValidationFormatError
-from .table import CsvTable, REF_SCENARIO, SENSITIVITY_COL
+from .table import CsvTable, REF_SENSITIVITY, SENSITIVITY_COL
 import pdb
 
 pd.set_option('display.width', 200)
@@ -134,7 +134,7 @@ class ShapeDataMgr(object):
                         print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
                     df = pd.read_csv(f, index_col=None)
                     if SENSITIVITY_COL in df.columns:
-                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SCENARIO)
+                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
                     if self.compile_sensitivities:
                         if SENSITIVITY_COL in df.columns:
                             df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
@@ -311,6 +311,7 @@ class CsvDatabase(object):
         tup = tbl.get_row(key_col, key, scenario=scenario, raise_error=raise_error, **filters)
         return tup
 
+    # Deprecated?
     def get_rows_from_table(self, name, key_col, key, scenario=None, raise_error=True):
         tbl = self.get_table(name)
         tups = tbl.get_row(key_col, key, scenario=scenario, allow_multiple=True, raise_error=raise_error)

@@ -5,6 +5,7 @@ import logging
 
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
+from .table import SENSITIVITY_COL, REF_SENSITIVITY
 from .utils import filter_query
 
 class StringMap(object):
@@ -129,22 +130,36 @@ class DataObject(object):
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries
 
-    def load_timeseries(self, key, **filters):
+    def load_timeseries(self, key, scenario, **filters):
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
         df = tbl.data
+
+        # added_filters = False
+
+        # Filter by sensitivity
+        if SENSITIVITY_COL in df.columns:
+            sens = scenario.get_sensitivity(tbl_name, key, **filters) if scenario else None
+            filters[SENSITIVITY_COL] = sens or REF_SENSITIVITY
+            # added_filters = True
+
         if key is not None:
             # Process key match as another filter
             filters[md.key_col] = key
-            self.add_sensitivity_filter(key, filters)
+            # added_filters = True
+
+        # deprecated
+        # if added_filters:
+        #     # used by EnergyPATHWAYS
+        #     self.add_sensitivity_filter(key, filters)
 
         matches = filter_query(df, filters)
 
         if len(matches) == 0:
-            logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            logging.debug("Warning: table '{}': no rows found with the following pattern: '{}'".format(tbl_name, filters))
             self._has_data = False
             return None
         else:
@@ -169,18 +184,23 @@ class DataObject(object):
                 timeseries = timeseries.astype(float)
             except:
                 pass
+
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+
             if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
                 assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
+
             if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
                 assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
+
             if 'oth_1' in timeseries.index.names:
                 assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
+
             if 'oth_2' in timeseries.index.names:
                 assert attrs['other_index_2'].values[0] is not None, "table {}, key {}, other_index_2 can't be None when oth_2 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_2'].values[0], level='oth_2')
@@ -207,7 +227,7 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
         if md.df_cols:
-            tup = self.load_timeseries(key, **filters)
+            tup = self.load_timeseries(key, scenario, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
             cols = tbl.get_columns()

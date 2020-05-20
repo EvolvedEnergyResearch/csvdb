@@ -9,7 +9,7 @@ from .utils import filter_query
 
 # This string is inserted into sensitivity columns when value == None,
 # to allow sensitivity to be used in dataframe indices.
-REF_SCENARIO = '_reference_'
+REF_SENSITIVITY = '_reference_'
 
 SENSITIVITY_COL = 'sensitivity'
 
@@ -147,10 +147,10 @@ class CsvTable(object):
             df[col] = df[col].astype(str)
 
         # TODO: Document this
-        # Convert empty (NaN) sensitivities to value of REF_SCENARIO
+        # Convert empty (NaN) sensitivities to value of REF_SENSITIVITY
         if self.has_sensitivity_col(df):
             s = df[SENSITIVITY_COL]
-            s.where(pd.notnull(s), other=REF_SCENARIO, inplace=True)
+            s.where(pd.notnull(s), other=REF_SENSITIVITY, inplace=True)
 
         elif self.compile_sensitivities:
             # if the data doesn't have a sensitivity column and we are compiling sensitivities, data is just None
@@ -193,7 +193,7 @@ class CsvTable(object):
 
         :param key_col: (str) the name of the column holding the key value
         :param key: (str) the unique id of a row in `table`
-        :param scenario: (str) the scenario to load, or None, in which case `scenario` is ignored.
+        :param scenario: (instance of subclass of csvdb.AbstractScenario), or None
         :param allow_multiple: (bool) whether to allow multiple rows to be returned (else it's an error.)
         :param raise_error: (bool) whether to raise an error or return None if the
            {`key`, `scenario`} combination is not found in `table`.
@@ -209,7 +209,9 @@ class CsvTable(object):
         filters[key_col] = key
 
         if scenario and self.has_sensitivity_col():
-            filters[SENSITIVITY_COL] = scenario
+            sens = scenario.get_sensitivity(name, key, **filters)
+            if sens:
+                filters[SENSITIVITY_COL] = sens
 
         rows = filter_query(self.data, filters)
         tups = [tuple(row) for idx, row in rows.iterrows()]

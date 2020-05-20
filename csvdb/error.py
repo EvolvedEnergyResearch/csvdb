@@ -53,3 +53,8 @@ class ValidationFormatError(Exception):
 class ValidationUsageError(CsvdbException):
     def __init__(self, msg):
         super(ValidationUsageError, self).__init__(msg)
+
+class ScenarioFileError(CsvdbException):
+    def __init__(self, pathname, msg):
+        msg = pathname + ': ' + msg
+        super(ScenarioFileError, self).__init__(msg)
