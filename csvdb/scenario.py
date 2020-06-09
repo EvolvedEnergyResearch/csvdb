@@ -48,7 +48,7 @@ class AbstractScenario(object):
         if ext[0] != '.':
             ext = '.' + ext
 
-        self.pathname = pathname = self.filepath(filename, dirpath, ext)
+        self.pathname = pathname = self.filepath(filename or name, dirpath, ext)
 
         if not os.path.lexists(pathname):
             raise ScenarioFileError(pathname, "Scenario file does not exist.")
