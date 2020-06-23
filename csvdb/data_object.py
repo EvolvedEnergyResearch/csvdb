@@ -138,25 +138,27 @@ class DataObject(object):
 
         df = tbl.data
 
-        # added_filters = False
-
-        # Filter by sensitivity
-        if SENSITIVITY_COL in df.columns:
-            sens = scenario.get_sensitivity(tbl_name, key, **filters) if scenario else None
-            filters[SENSITIVITY_COL] = sens or REF_SENSITIVITY
-            # added_filters = True
+        has_sensitivity_col = SENSITIVITY_COL in df.columns
+        # This breaks if we add the key_col filter, so it needs to come before the if key is None line.
+        if has_sensitivity_col:
+            sens = scenario.get_sensitivity(tbl_name, key, **filters) or REF_SENSITIVITY
 
         if key is not None:
             # Process key match as another filter
             filters[md.key_col] = key
-            # added_filters = True
-
-        # deprecated
-        # if added_filters:
-        #     # used by EnergyPATHWAYS
-        #     self.add_sensitivity_filter(key, filters)
 
         matches = filter_query(df, filters)
+
+        # Filter by sensitivity
+        if has_sensitivity_col and len(matches):
+            sens_col_values = set(matches[SENSITIVITY_COL].values)
+            if sens not in sens_col_values:
+                msage = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
+                if len(filters):
+                    msage += " at location {}".format(filters)
+                raise CsvdbException(msage)
+            # sens_filter = sens or REF_SENSITIVITY
+            matches = matches[matches[SENSITIVITY_COL] == sens]
 
         if len(matches) == 0:
             logging.debug("Warning: table '{}': no rows found with the following pattern: '{}'".format(tbl_name, filters))
@@ -176,7 +178,7 @@ class DataObject(object):
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
             raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
 
-        col_to_keep = list(set(md.df_cols) - set(['sensitivity']))
+        col_to_keep = list(set(md.df_cols) - {'sensitivity'})
         timeseries = matches[col_to_keep]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
             timeseries = self.timeseries_cleanup(timeseries)
@@ -212,6 +214,7 @@ class DataObject(object):
             duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
             if any(duplicate_index):
                 print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                pdb.set_trace()
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
