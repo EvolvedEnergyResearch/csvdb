@@ -124,7 +124,7 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col + ['sensitivity']]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
         timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
         timeseries = timeseries.set_index(index_cols).sort_index()
@@ -176,7 +176,8 @@ class DataObject(object):
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
             raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
 
-        timeseries = matches[md.df_cols]
+        col_to_keep = list(set(md.df_cols) - set(['sensitivity']))
+        timeseries = matches[col_to_keep]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
             timeseries = self.timeseries_cleanup(timeseries)
             #todo improve this try/except
@@ -187,7 +188,10 @@ class DataObject(object):
 
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                if timeseries.index.nlevels>1:
+                    timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                else:
+                    timeseries.index.name = attrs['geography'].values[0]
 
             if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
                 assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
