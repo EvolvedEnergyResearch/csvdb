@@ -176,8 +176,10 @@ class DataObject(object):
         if len(attrs) > 1:
             columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
-
+            if has_sensitivity_col:
+                raise CsvdbException("DataObject: table '{}': sensitivity '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, sens, attrs[cols]))
+            else:
+                raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
         col_to_keep = list(set(md.df_cols) - {'sensitivity'})
         timeseries = matches[col_to_keep]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
