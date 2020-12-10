@@ -549,7 +549,16 @@ class CsvDatabase(object):
                         values = values[:2] + ["..."] + values[-2:]
 
                     msgs.append("Errors in {}.{}:".format(tbl_name, col_name))
+
+                    # Remember reported errors so we don't repeat them.
+                    reported_bad_values = set()
+
                     for i, value in bad:
+                        if value in reported_bad_values:
+                            continue
+                        else:
+                            reported_bad_values.add(value)
+
                         if values:
                             msgs.append("    Value '{}' at line {} not found in allowable list {}".format(
                                 value, i + 2, values))  # +1 for header; +1 to translate 0 offset
