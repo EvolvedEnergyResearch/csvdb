@@ -10,7 +10,6 @@ class CsvdbFilter(object):
         Construct a CsvdbFilter object
 
         :param table_name: (str) the name of the table to apply the filters to.
-        :param key_col: (str) the name of the key column
         :param key_value: (str) the value to match in the key column, or None
         :param sens_value: (str) the value to match in the sensitivity column, or None
         :param constraints: (list) tuples of the form (col_name, col_value) to filter on.

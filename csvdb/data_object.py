@@ -153,10 +153,10 @@ class DataObject(object):
         if has_sensitivity_col and len(matches):
             sens_col_values = set(matches[SENSITIVITY_COL].values)
             if sens not in sens_col_values:
-                msage = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
+                msg = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
                 if len(filters):
-                    msage += " at location {}".format(filters)
-                raise CsvdbException(msage)
+                    msg += " at location {}".format(filters)
+                raise CsvdbException(msg)
             # sens_filter = sens or REF_SENSITIVITY
             matches = matches[matches[SENSITIVITY_COL] == sens]
 
