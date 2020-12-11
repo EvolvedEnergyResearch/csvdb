@@ -30,21 +30,25 @@ def mkdirs(newdir, mode=0o770):
 def git_repo_is_clean(dir, git_exe='git'):
     from subprocess import check_output, PIPE, CalledProcessError
 
-    os.chdir(dir)
-
+    cwd = os.getcwd()
     try:
-        output = check_output([git_exe, 'status', '--short'], stderr=PIPE)
-        if len(output.strip()) == 0:
+        os.chdir(dir)
+
+        try:
+            output = check_output([git_exe, 'status', '--short'], stderr=PIPE)
+            if len(output.strip()) == 0:
+                return True
+            else:
+                return False
+
+        except CalledProcessError: # Not a git repo => treat as clean
             return True
-        else:
+
+        except:  # Failed to run git (FileNotFoundError on Windows or OSError on Unix-like)
+            print("WARNING: '{}' not found".format(git_exe))
             return False
-
-    except CalledProcessError: # Not a git repo => treat as clean
-        return True
-
-    except:  # Failed to run git (FileNotFoundError on Windows or OSError on Unix-like)
-        print("WARNING: '{}' not found".format(git_exe))
-        return False
+    finally:
+        os.chdir(cwd)
 
 
 def create_file_map(dbdir):
