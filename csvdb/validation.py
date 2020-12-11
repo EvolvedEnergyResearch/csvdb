@@ -27,6 +27,26 @@ def mkdirs(newdir, mode=0o770):
         if e.errno != EEXIST:
             raise
 
+def git_repo_is_clean(dir, git_exe='git'):
+    from subprocess import check_output, PIPE, CalledProcessError
+
+    os.chdir(dir)
+
+    try:
+        output = check_output([git_exe, 'status', '--short'], stderr=PIPE)
+        if len(output.strip()) == 0:
+            return True
+        else:
+            return False
+
+    except CalledProcessError: # Not a git repo => treat as clean
+        return True
+
+    except:  # Failed to run git (FileNotFoundError on Windows or OSError on Unix-like)
+        print("WARNING: '{}' not found".format(git_exe))
+        return False
+
+
 def create_file_map(dbdir):
     file_map = {}  # maps table names => file names under the database root folder
 
@@ -187,6 +207,10 @@ def main_fun(dbdir, pkg_name, all=False, trim_blanks=False, drop_empty_rows=Fals
 
     if update_schema and create_schema:
         raise ValidationUsageError('Options --update-schema and --create-schema are mutually exclusive.')
+
+    if save_changes and not git_repo_is_clean(dbdir):
+        print("WARNING: git repo is dirty; changes will NOT be saved.")
+        save_changes = False
 
     if all:
         drop_empty = trim_blanks = check_unique = True
