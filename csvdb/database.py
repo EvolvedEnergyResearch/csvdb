@@ -551,7 +551,7 @@ class CsvDatabase(object):
                     if values and len(values) > 5:
                         values = values[:2] + ["..."] + values[-2:]
 
-                    msgs.append("Errors in {}.{}:".format(tbl_name, col_name))
+                    msgs.append("\nErrors in {}.{}:".format(tbl_name, col_name))
 
                     # Remember reported errors so we don't repeat them.
                     reported_bad_values = set()
