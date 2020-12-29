@@ -27,6 +27,7 @@ class MissingKeyValue(CsvdbException):
 class DuplicateRowsFound(CsvdbException):
     def __init__(self, table, key):
         msg = "Duplicate rows found for key '{}' in table '{}'".format(key, table)
+
         super(DuplicateRowsFound, self).__init__(msg)
 
 class UnknownDataClass(CsvdbException):
@@ -44,7 +45,16 @@ class SubclassProtocolError(CsvdbException):
         msg = 'Class "{}" fails to implement method "{}"'.format(cls.__name__, method)
         super(SubclassProtocolError, self).__init__(msg)
 
-class ValidationDataError(Exception):
-    def __init__(self, path, linenum, msg):
-        msg = "Syntax error in {} at line {}: {}".format(path, linenum+1, msg)
-        super(ValidationDataError, self).__init__(msg)
+class ValidationFormatError(Exception):
+    def __init__(self, msg):
+        msg = "Format error in validation.csv: {}".format(msg)
+        super(ValidationFormatError, self).__init__(msg)
+
+class ValidationUsageError(CsvdbException):
+    def __init__(self, msg):
+        super(ValidationUsageError, self).__init__(msg)
+
+class ScenarioFileError(CsvdbException):
+    def __init__(self, pathname, msg):
+        msg = pathname + ': ' + msg
+        super(ScenarioFileError, self).__init__(msg)

@@ -4,14 +4,13 @@ setup(
     name='csvdb',
     version=1.0,
     author='Rich Plevin and Ryan Jones',
-    description='Python 2.7 library and scripts for interacting with data stored in CSV files.',
+    description='Python 3.8 library and scripts for interacting with data stored in CSV files.',
     platforms=['Windows', 'MacOS', 'Linux'],
 
     packages=['csvdb'],
     entry_points={'console_scripts': ['genClasses = csvdb.genClasses:main',
-                                      'updateSchema = bin.updateSchema:main',
-                                      'check_csvdb = bin.checkdb:main']},
-    install_requires=['futures', 'pandas'],
+                                      'csvdbSchema = bin.validate:main']},
+    install_requires=['pandas'],
     include_package_data = False,
 
     url='https://github.com/EvolvedEnergyResearch/csvdb',

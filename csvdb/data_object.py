@@ -1,10 +1,11 @@
-from __future__ import print_function
+
 from collections import defaultdict
 import pdb
 import logging
 
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
+from .table import SENSITIVITY_COL, REF_SENSITIVITY
 from .utils import filter_query
 
 class StringMap(object):
@@ -76,7 +77,12 @@ class DataObject(object):
         self.raw_values = None
 
     def __str__(self):
-        return "<{} {}='{}'>".format(self.__class__.__name__, self._key_col, self._key)
+        cls_name = self.__class__.__name__
+        key_col = self._key_col
+
+        s = "<{} (no key col)>".format(cls_name) if key_col is None else "<{} {}='{}'>".format(cls_name, key_col, self._key)
+        return s
+
 
     @classmethod
     def load_from_db(cls, key, scenario, **filters):
@@ -118,27 +124,45 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col + ['sensitivity']]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
         timeseries = timeseries.copy()  # avoid warning about setting a slice
         timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries
 
-    def load_timeseries(self, key, **filters):
+    def load_timeseries(self, key, scenario, **filters):
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
         df = tbl.data
-        # Process key match as another filter
-        filters[md.key_col] = key
-        self.add_sensitivity_filter(key, filters)
+
+        has_sensitivity_col = SENSITIVITY_COL in df.columns
+        # This breaks if we add the key_col filter, so it needs to come before the if key is None line.
+        if has_sensitivity_col:
+            sens = scenario.get_sensitivity(tbl_name, key, **filters) or REF_SENSITIVITY
+
+        if key is not None:
+            # Process key match as another filter
+            filters[md.key_col] = key
+
         matches = filter_query(df, filters)
 
+        # Filter by sensitivity
+        if has_sensitivity_col and len(matches):
+            sens_col_values = set(matches[SENSITIVITY_COL].values)
+            if sens not in sens_col_values:
+                msage = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
+                if len(filters):
+                    msage += " at location {}".format(filters)
+                raise CsvdbException(msage)
+            # sens_filter = sens or REF_SENSITIVITY
+            matches = matches[matches[SENSITIVITY_COL] == sens]
+
         if len(matches) == 0:
-            logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            logging.debug("Warning: table '{}': no rows found with the following pattern: '{}'".format(tbl_name, filters))
             self._has_data = False
             return None
         else:
@@ -151,10 +175,14 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique())!=1]
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[[md.key_col]+columns_with_non_unique_values]))
-
-        timeseries = matches[md.df_cols]
+            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
+            cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
+            if has_sensitivity_col:
+                raise CsvdbException("DataObject: table '{}': sensitivity '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, sens, attrs[cols]))
+            else:
+                raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
+        col_to_keep = list(set(md.df_cols) - {'sensitivity'})
+        timeseries = matches[col_to_keep]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
             timeseries = self.timeseries_cleanup(timeseries)
             #todo improve this try/except
@@ -162,12 +190,26 @@ class DataObject(object):
                 timeseries = timeseries.astype(float)
             except:
                 pass
+
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                if timeseries.index.nlevels>1:
+                    timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                else:
+                    timeseries.index.name = attrs['geography'].values[0]
+
+            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
+                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
+
+            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
+                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
+
             if 'oth_1' in timeseries.index.names:
                 assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
+
             if 'oth_2' in timeseries.index.names:
                 assert attrs['other_index_2'].values[0] is not None, "table {}, key {}, other_index_2 can't be None when oth_2 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_2'].values[0], level='oth_2')
@@ -175,6 +217,7 @@ class DataObject(object):
             duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
             if any(duplicate_index):
                 print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                pdb.set_trace()
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
@@ -189,15 +232,12 @@ class DataObject(object):
         return tup
 
     def init_from_db(self, key, scenario, **filters):
-        if key is None:
-            return
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-
         if md.df_cols:
-            tup = self.load_timeseries(key, **filters)
+            tup = self.load_timeseries(key, scenario, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
             cols = tbl.get_columns()
@@ -243,32 +283,3 @@ class DataObject(object):
     def check_scenario(self, scenario):
         if scenario != self._scenario:
             raise CsvdbException("DataObject: mismatch between caller's scenario ({}) and self._scenario ({})".format(scenario, self._scenario))
-
-    # TODO: Imported from EP. Not sure if it will remain.
-    # Caller gets mapped cols via "from .text_mappings import MappedCols"
-    def map_strings(self, df, mapped_cols, drop_str_cols=True):
-        tbl_name = self._data_table_name
-
-        strmap = StringMap.getInstance()
-        str_cols = mapped_cols.get(tbl_name, [])
-
-        for col in str_cols:
-            # Ensure that all values are in the StringMap
-            values = df[col].unique()
-            for value in values:
-                strmap.store(value)
-
-            # mapped column "foo" becomes "foo_id"
-            id_col = col + '_id'
-
-            # Force string cols to str and replace 'nan' with None
-            df[col] = df[col].astype(str)
-            df.loc[df[col] == 'nan', col] = None
-
-            # create a column with integer ids
-            df[id_col] = df[col].map(lambda txt: strmap.get_id(txt, raise_error=False))
-
-        if drop_str_cols:
-            df.drop(str_cols, axis=1, inplace=True)
-
-        return df

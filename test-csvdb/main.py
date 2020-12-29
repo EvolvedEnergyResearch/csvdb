@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from os import path
 
 from schema import *
@@ -49,7 +49,10 @@ class ElectricStorage(TechMainCapitalCostLoader):
         super(ElectricStorage, self).show_costs()
         print('\n{} capital cost (energy)\n{}'.format(self.name, self.capcost_energy.timeseries()))
 
-
+class TechMainObj(TechMain):
+    def __init__(self, scenario=None):
+        super(TechMainObj, self).__init__(scenario)
+        self.init_from_db(None, scenario)
 
 def main():
     import pandas as pd
@@ -62,11 +65,16 @@ def main():
     db = TestDatabase.get_database(pathname)
     scenario = None
 
+    tech_main_obj = TechMainObj()
+
     map_keys = db.get_table("GeographyMapKeys")
     print("\nGeographyMapKeys:\n", map_keys.data)
 
     geo = db.get_table("GeographiesSpatialJoin")
     print("\nGeographiesSpatialJoin.data[1:10, 1:10]\n", geo.data.iloc[1:10, 1:10])
+
+    # Test data table without a key column
+    emiss_price = db.get_table("EMISSIONS_PRICE")
 
     # Get the raw data table objects
     tech_main  = db.get_table("TECH_MAIN")
@@ -89,8 +97,8 @@ def main():
     ccgt_obj = DispatchableThermal('CCGT', scenario)
     ccgt_obj.show_costs()
 
-    # Shapes data are loaded by calling db.shapes.load_all() or automatically,
-    # on the first call to db.shapes.get_slice().
+    # Shapes data are loaded by calling self.shapes.load_all() or automatically,
+    # on the first call to self.shapes.get_slice().
     ag_shapes = db.shapes.get_slice('Agriculture')
     print("\nAgriculture shapes:\n", ag_shapes)
 

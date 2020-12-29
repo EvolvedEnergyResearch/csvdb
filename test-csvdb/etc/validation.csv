@@ -1,0 +1,9 @@
+table_name,column_name,not_null,linked_column,dtype,folder,referenced_table,referenced_field,cascade_delete,additional_valid_inputs,_c_10,_c_11,_c_12,_c_13,_c_14,_c_15,_c_16,_c_17,_c_18,_c_19
+,extrapolation_method,,,,,,,,linear,exponential,linear_interpolation,linear_regression,logistic,nearest,quadratic,cubic,none,decay_towards_linear_regression,average,exponential_regression,exponential_interpolation,forward_fill,back_fill,two_tier,three_tier,four_tier,five_tier,previous_period_mean
+,interpolation_method,True,,,,,,,linear,linear_interpolation,linear_regression,logistic,nearest,quadratic,cubic,none,decay_towards_linear_regression,average,exponential_regression,exponential_interpolation,forward_fill,back_fill,two_tier,three_tier,four_tier,five_tier,previous_period_mean
+,value,True,,float,,,,,,,,,,,,,,,
+,vintage,,,int,,,,,,,,,,,,,,,
+,year,,,int,,,,,,,,,,,,,,,
+SHAPE_META,name,,,,ShapeData,,,,,,,,,,,,,,
+TECH_STARTUP_COST,value,False,,,,,,,,,,,,,,,,,
+TECH_SHUTDOWN_COST,value,False,,,,,,,,,,,,,,,,,
