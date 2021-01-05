@@ -53,6 +53,10 @@ class ClassGenerator(object):
         stream.write('    _instances_by_key = {}\n')
 
         db = self.db
+        # if table == 'DEMAND_SERVICE_DEMAND':
+        #     import pdb
+        #     pdb.set_trace()
+
         tbl = db.get_table(table)
         md = tbl.metadata
 

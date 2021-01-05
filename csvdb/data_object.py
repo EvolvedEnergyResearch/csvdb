@@ -159,7 +159,7 @@ class DataObject(object):
         if len(attrs) > 1:
             columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
+            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {} \n {}".format(tbl_name, attrs[cols], attrs[cols].values))
 
         timeseries = matches[md.df_cols]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
@@ -172,12 +172,7 @@ class DataObject(object):
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
-            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
-                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
-            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
-                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
+
             if 'oth_1' in timeseries.index.names:
                 assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
@@ -189,7 +184,12 @@ class DataObject(object):
             if any(duplicate_index):
                 print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
-
+            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
+                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
+            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
+                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
             # we save the same data to two variables for ease of code interchangeability
             self._timeseries = timeseries.copy(deep=True) # RIO uses _timeseries
             self.raw_values = self._timeseries # EP uses raw_values
