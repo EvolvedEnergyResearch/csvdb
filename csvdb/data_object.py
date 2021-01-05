@@ -5,6 +5,7 @@ import logging
 
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
+from .table import SENSITIVITY_COL, REF_SENSITIVITY
 from .utils import filter_query
 
 class StringMap(object):
@@ -123,28 +124,44 @@ class DataObject(object):
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
-        index_cols = [c for c in md.df_cols if c not in md.df_value_col]
+        index_cols = [c for c in md.df_cols if c not in md.df_value_col + ['sensitivity']]
         # replace NaNs in the index with 'None', which pandas treats better. The issue is we cannot have an index with all NaNs
         timeseries[index_cols] = timeseries[index_cols].fillna('_empty_')
         timeseries = timeseries.set_index(index_cols).sort_index()
         return timeseries
 
-    def load_timeseries(self, key, **filters):
+    def load_timeseries(self, key, scenario, **filters):
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
 
         df = tbl.data
+
+        has_sensitivity_col = SENSITIVITY_COL in df.columns
+        # This breaks if we add the key_col filter, so it needs to come before the if key is None line.
+        if has_sensitivity_col:
+            sens = scenario.get_sensitivity(tbl_name, key, **filters) or REF_SENSITIVITY
+
         if key is not None:
             # Process key match as another filter
             filters[md.key_col] = key
-            self.add_sensitivity_filter(key, filters)
 
         matches = filter_query(df, filters)
 
+        # Filter by sensitivity
+        if has_sensitivity_col and len(matches):
+            sens_col_values = set(matches[SENSITIVITY_COL].values)
+            if sens not in sens_col_values:
+                msg = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
+                if len(filters):
+                    msg += " at location {}".format(filters)
+                raise CsvdbException(msg)
+            # sens_filter = sens or REF_SENSITIVITY
+            matches = matches[matches[SENSITIVITY_COL] == sens]
+
         if len(matches) == 0:
-            logging.debug("""Warning: table '{}': no rows found with the following pattern: '{}'""".format(tbl_name, filters))
+            logging.debug("Warning: table '{}': no rows found with the following pattern: '{}'".format(tbl_name, filters))
             self._has_data = False
             return None
         else:
@@ -159,9 +176,12 @@ class DataObject(object):
         if len(attrs) > 1:
             columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
-            raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {} \n {}".format(tbl_name, attrs[cols], attrs[cols].values))
-
-        timeseries = matches[md.df_cols]
+            if has_sensitivity_col:
+                raise CsvdbException("DataObject: table '{}': sensitivity '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, sens, attrs[cols]))
+            else:
+                raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
+        col_to_keep = list(set(md.df_cols) - {'sensitivity'})
+        timeseries = matches[col_to_keep]
         if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
             timeseries = self.timeseries_cleanup(timeseries)
             #todo improve this try/except
@@ -169,13 +189,26 @@ class DataObject(object):
                 timeseries = timeseries.astype(float)
             except:
                 pass
+
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                if timeseries.index.nlevels>1:
+                    timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
+                else:
+                    timeseries.index.name = attrs['geography'].values[0]
+
+            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
+                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
+
+            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
+                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
+                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
 
             if 'oth_1' in timeseries.index.names:
                 assert attrs['other_index_1'].values[0] is not None, "table {}, key {}, other_index_1 can't be None when oth_1 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_1'].values[0], level='oth_1')
+
             if 'oth_2' in timeseries.index.names:
                 assert attrs['other_index_2'].values[0] is not None, "table {}, key {}, other_index_2 can't be None when oth_2 index exists".format(tbl_name, key)
                 timeseries.index = timeseries.index.rename(attrs['other_index_2'].values[0], level='oth_2')
@@ -183,13 +216,9 @@ class DataObject(object):
             duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
             if any(duplicate_index):
                 print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
+                pdb.set_trace()
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
-            if 'gau_from' in timeseries.index.names and 'geography_from' in attrs.columns:
-                assert attrs['geography_from'].values[0] is not None, "table {}, key {}, geography_from can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography_from'].values[0], level='gau_from')
-            if 'gau_to' in timeseries.index.names and 'geography_to' in attrs.columns:
-                assert attrs['geography_to'].values[0] is not None, "table {}, key {}, geography_to can't be None".format(tbl_name, key)
-                timeseries.index = timeseries.index.rename(attrs['geography_to'].values[0], level='gau_to')
+
             # we save the same data to two variables for ease of code interchangeability
             self._timeseries = timeseries.copy(deep=True) # RIO uses _timeseries
             self.raw_values = self._timeseries # EP uses raw_values
@@ -207,7 +236,7 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
         if md.df_cols:
-            tup = self.load_timeseries(key, **filters)
+            tup = self.load_timeseries(key, scenario, **filters)
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
             cols = tbl.get_columns()
