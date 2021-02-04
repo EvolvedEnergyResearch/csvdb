@@ -216,7 +216,6 @@ class DataObject(object):
             duplicate_index = timeseries.index.duplicated(keep=False)  # keep = False keeps all of the duplicate indices
             if any(duplicate_index):
                 print("'{}' in table '{}': duplicate indices found (keeping first): \n {}".format(key, tbl_name, timeseries[duplicate_index]))
-                pdb.set_trace()
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
