@@ -152,6 +152,9 @@ class DataObject(object):
         # Filter by sensitivity
         if has_sensitivity_col and len(matches):
             sens_col_values = set(matches[SENSITIVITY_COL].values)
+            # if we only have one sensitivity, we don't care what we queried, let's just grab the one we have
+            if len(sens_col_values) == 1:
+                sens = sens_col_values.pop()
             if sens not in sens_col_values:
                 msg = "Sensitivity name '{}' not found in table '{}'".format(sens, tbl_name)
                 if len(filters):
