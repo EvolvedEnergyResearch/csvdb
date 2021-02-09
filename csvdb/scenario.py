@@ -1,5 +1,5 @@
 from __future__ import print_function
-from collections import defaultdict
+import pdb
 import os
 from .error import ScenarioFileError, CsvdbException
 from .data_object import get_database
@@ -57,7 +57,7 @@ class AbstractScenario(object):
         # Sensitivities are stored in a dict keyed by table name, with values being a
         # dict keyed by tuples of (key_value, filters...) where filters is a tuple of
         # (col_name, col_value) pairs. The value of the inner dict is the sensitivity name.
-        self.filter_dict = defaultdict(dict)
+        self.filter_dict = {}
 
         self.load()        # N.B. subclass responsibility to provide this
 
@@ -77,6 +77,8 @@ class AbstractScenario(object):
         constraints = tuple(filter.constraints) or None
 
         key = (filter.key_value, constraints)
+        if filter.table_name not in self.filter_dict:
+            self.filter_dict[filter.table_name] = {}
         self.filter_dict[filter.table_name][key] = filter.sens_value
 
     def get_sensitivity(self, table_name, key_value, **filters):
@@ -84,9 +86,11 @@ class AbstractScenario(object):
         Return the name of the sensitivity associated with the table, key, and optional filters, or None
         if no such sensitivity exists.
         """
-        constraints = tuple((key, value) for key, value in filters.items()) or None
-        lookup_key = (key_value, constraints)
-        filter = self.filter_dict[table_name]
+        if table_name not in self.filter_dict:
+            return None
+        sorted_constraints = tuple((key, filters[key]) for key in sorted(filters.keys())) or None
+        lookup_key = (key_value, sorted_constraints)
+        filt = self.filter_dict[table_name]
 
-        sens_value = filter.get(lookup_key)
+        sens_value = filt.get(lookup_key, None)
         return sens_value
