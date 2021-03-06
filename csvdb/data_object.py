@@ -8,6 +8,7 @@ from .error import SubclassProtocolError, CsvdbException
 from .table import SENSITIVITY_COL, REF_SENSITIVITY
 from .utils import filter_query
 
+
 class StringMap(object):
     """
     A simple class to map strings to integer IDs and back again.
@@ -22,9 +23,9 @@ class StringMap(object):
         return cls.instance
 
     def __init__(self):
-        self.text_to_id = {}     # maps text to integer id
-        self.id_to_text = {}     # maps id back to text
-        self.next_id = 1        # the next id to assign
+        self.text_to_id = {}  # maps text to integer id
+        self.id_to_text = {}  # maps id back to text
+        self.next_id = 1  # the next id to assign
 
     def store(self, text):
         # If already known, return it
@@ -45,10 +46,12 @@ class StringMap(object):
     def get_text(self, id, raise_error=True):
         return self.id_to_text[id] if raise_error else (None if id is None else self.id_to_text.get(id, None))
 
+
 def str_to_id(text):
     obj = StringMap.getInstance()
     id = obj.store(text)
     return id
+
 
 def get_database(pathname=None):
     return CsvDatabase.get_database(pathname)
@@ -73,7 +76,7 @@ class DataObject(object):
         self._instancesByClass[cls].append(self)
         self._scenario = scenario
         self._key = key
-        self._timeseries = None          # dataframe or None
+        self._timeseries = None  # dataframe or None
         self.raw_values = None
 
     def __str__(self):
@@ -82,7 +85,6 @@ class DataObject(object):
 
         s = "<{} (no key col)>".format(cls_name) if key_col is None else "<{} {}='{}'>".format(cls_name, key_col, self._key)
         return s
-
 
     @classmethod
     def load_from_db(cls, key, scenario, **filters):
@@ -113,13 +115,13 @@ class DataObject(object):
     def timeseries(self):
         try:
             return self._timeseries
-        except KeyError:                # TODO: looks like this predates setting _timeseries = None in __init__
+        except KeyError:  # TODO: looks like this predates setting _timeseries = None in __init__
             return None
 
-    def add_sensitivity_filter(self, key, filters): # This function is overwritten in EP with a version that does something
+    def add_sensitivity_filter(self, key, filters):  # This function is overwritten in EP with a version that does something
         return filters
 
-    def timeseries_cleanup(self, timeseries): # This function is overwritten in EP with a slightly different version
+    def timeseries_cleanup(self, timeseries):  # This function is overwritten in EP with a slightly different version
         db = get_database()
         tbl_name = self._table_name
         tbl = db.get_table(tbl_name)
@@ -177,7 +179,7 @@ class DataObject(object):
             attrs = attrs.drop_duplicates()
 
         if len(attrs) > 1:
-            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) !=1]
+            columns_with_non_unique_values = [col for col in attrs.columns if len(attrs[col].unique()) != 1]
             cols = ([md.key_col] if md.has_key_col else []) + columns_with_non_unique_values
             if has_sensitivity_col:
                 raise CsvdbException("DataObject: table '{}': sensitivity '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, sens, attrs[cols]))
@@ -185,9 +187,9 @@ class DataObject(object):
                 raise CsvdbException("DataObject: table '{}': there is unique data by row when it should be constant \n {}".format(tbl_name, attrs[cols]))
         col_to_keep = list(set(md.df_cols) - {'sensitivity'})
         timeseries = matches[col_to_keep]
-        if not timeseries[md.df_value_col].isnull().all().all(): # sometimes in EP the data is empty
+        if not timeseries[md.df_value_col].isnull().all().all():  # sometimes in EP the data is empty
             timeseries = self.timeseries_cleanup(timeseries)
-            #todo improve this try/except
+            # todo improve this try/except
             try:
                 timeseries = timeseries.astype(float)
             except:
@@ -195,7 +197,7 @@ class DataObject(object):
 
             if 'gau' in timeseries.index.names:
                 assert attrs['geography'].values[0] is not None, "table {}, key {}, geography can't be None".format(tbl_name, key)
-                if timeseries.index.nlevels>1:
+                if timeseries.index.nlevels > 1:
                     timeseries.index = timeseries.index.rename(attrs['geography'].values[0], level='gau')
                 else:
                     timeseries.index.name = attrs['geography'].values[0]
@@ -222,8 +224,8 @@ class DataObject(object):
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
-            self._timeseries = timeseries.copy(deep=True) # RIO uses _timeseries
-            self.raw_values = self._timeseries # EP uses raw_values
+            self._timeseries = timeseries.copy(deep=True)  # RIO uses _timeseries
+            self.raw_values = self._timeseries  # EP uses raw_values
         else:
             self._timeseries = self.raw_values = None
 
