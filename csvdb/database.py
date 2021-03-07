@@ -476,7 +476,8 @@ class CsvDatabase(object):
         msgs = []
 
         if len(df) == 0:
-            msgs.append("\nSkipping empty table {}".format(tbl_name))
+            # too verbose:
+            # msgs.append("\nSkipping empty table {}".format(tbl_name))
             return (fixable, msgs)
 
         if check_unique:
@@ -530,6 +531,8 @@ class CsvDatabase(object):
             if val_info:
                 values = val_info.values
                 type_func = val_info.type_func
+                ref_tbl = val_info.ref_tbl
+                ref_col = val_info.ref_col
                 bad = []
 
                 # If there are implicit or explicit values, check against them
@@ -548,11 +551,25 @@ class CsvDatabase(object):
                     if values and len(values) > 5:
                         values = values[:2] + ["..."] + values[-2:]
 
-                    msgs.append("Errors in {}.{}:".format(tbl_name, col_name))
+                    msgs.append("\nErrors in {}.{}:".format(tbl_name, col_name))
+
+                    # Remember reported errors so we don't repeat them.
+                    reported_bad_values = set()
+
                     for i, value in bad:
-                        if values:
-                            msgs.append("    Value '{}' at line {} not found in allowable list {}".format(
-                                value, i + 2, values))  # +1 for header; +1 to translate 0 offset
+                        if value in reported_bad_values:
+                            continue
+                        else:
+                            reported_bad_values.add(value)
+
+                        if ref_tbl and ref_col:   # values come from referenced column
+                            msgs.append("    Value '{}' at line {} not found in reference column {}.{}".format(
+                                value, i + 2, ref_tbl, ref_col))  # +1 for header; +1 to translate 0 offset
+
+                        elif values:              # values are enumerated in validation.csv
+                            msgs.append("    Value '{}' at line {} not found in validation list".format(
+                                value, i + 2))  # +1 for header; +1 to translate 0 offset
+
                         elif type_func:
                             msgs.append("    Value '{}' at line {} failed data type check with function {}".format(
                                 value, i + 2, type_func.__name__))

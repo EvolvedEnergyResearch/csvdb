@@ -139,7 +139,7 @@ class BlendExoDemand(DataObject):
 
 class BlendFuelInputs(DataObject):
     _instances_by_key = {}
-    _table_name = "BLEND_FUEL_INPUTS"
+    _table_name = "BLEND_CONNECTIONS"
     _key_col = 'name'
     _cols = ["fuel", "limit", "name"]
     _df_cols = []

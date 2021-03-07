@@ -41,7 +41,7 @@ _RioMetadata = [
                 df_cols=['sensitivity', 'gau', 'year', 'value'],
                 drop_cols=['source', 'notes']),
 
-    CsvMetadata('BLEND_FUEL_INPUTS'),
+    CsvMetadata('BLEND_CONNECTIONS'),
 
     CsvMetadata('CONVERSION_CAPITAL_COST',
                 df_cols=['sensitivity', 'gau', 'vintage', 'value'],

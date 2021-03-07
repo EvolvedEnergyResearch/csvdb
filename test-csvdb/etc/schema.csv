@@ -33,6 +33,6 @@ GeographiesSpatialJoin.csv,us,state,county,time zone,egrid,egrid_agg,egrid with 
 Technology Inputs/TECH_SCHEDULE.csv,name,type,unit,time_unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,year,value,sensitivity
 Technology Inputs/TECH_RETIREMENT_COST.csv,name,source,notes,currency,currency_year,cost_type,unit,time_unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,recovery_factor,levelized,vintage,value,sensitivity
 Technology Inputs/TECH_STARTUP_COST.csv,name,source,notes,currency,currency_year,unit,value,sensitivity
-Fuel Inputs/BLEND_FUEL_INPUTS.csv,name,fuel,limit
+Fuel Inputs/BLEND_CONNECTIONS.csv,name,fuel,limit
 Fuel Inputs/BLEND_EXISTING_STORAGE.csv,name,source,notes,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,year,value,sensitivity
 Fuel Inputs/BLEND_CAPITAL_COST.csv,name,source,notes,currency,currency_year,unit,geography,gau,geography_map_key,interpolation_method,extrapolation_method,extrapolation_growth_rate,recovery_factor,levelized,vintage,value,sensitivity
