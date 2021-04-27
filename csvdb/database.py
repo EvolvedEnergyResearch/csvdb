@@ -155,7 +155,10 @@ class ShapeDataMgr(object):
         This is a classmethod so it can be called by clean.py to generate
         CsvMetadata instances before creating the CsvDatabase.
         """
-        shape_dir = os.path.join(db_path, SHAPE_DIR)
+        if os.path.exists(os.path.join(db_path, 'Shapes', SHAPE_DIR)):
+            shape_dir = os.path.join(db_path, 'Shapes', SHAPE_DIR)
+        else:
+            shape_dir = os.path.join(db_path, SHAPE_DIR)
         shape_files_zip = glob(os.path.join(shape_dir, '*.csv.gz'))
         shape_files_csv = glob(os.path.join(shape_dir, '*.csv'))
 
@@ -357,7 +360,7 @@ class CsvDatabase(object):
             raise CsvdbException('Database path "{}" is not a directory'.format(pathname))
 
         for dirpath, dirnames, filenames in os.walk(pathname, topdown=False):
-            if SHAPE_DIR in dirpath:
+            if SHAPE_DIR in dirpath or 'outputs' in dirpath:
                 continue
 
             if os.path.basename(dirpath)[-5:] == CSV_DIR_PATTERN:
