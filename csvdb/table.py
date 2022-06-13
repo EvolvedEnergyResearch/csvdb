@@ -114,7 +114,7 @@ class CsvTable(object):
         for fn in filename:
             openFunc = gzip.open if fn.endswith('.gz') else open
             with openFunc(fn, 'r') as f:
-                dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values=''))
+                dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
 
         unique_columns_tups = set([tuple(df.columns) for df in dfs])
         if len(unique_columns_tups) > 1:

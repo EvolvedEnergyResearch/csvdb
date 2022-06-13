@@ -119,10 +119,14 @@ def update_from_schema(dbdir, schema_file, run):
 
             continue
 
-        with open(abspath, 'r') as csv:
-            header = csv.readline().strip()
+        try:
+            openFunc = gzip.open if re.match(ZIP_PATTERN, abspath) else open
+            with openFunc(abspath, 'rb') as csv:
+                header = csv.readline().strip()
 
-        target_cols = header.split(',')
+            target_cols = header.split(',')
+        except:
+            pdb.set_trace()
 
         if target_cols != source_cols:
             source_cols = [col.strip() for col in source_cols]

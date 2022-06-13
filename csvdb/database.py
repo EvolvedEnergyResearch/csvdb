@@ -109,11 +109,11 @@ class ShapeDataMgr(object):
     """
     Handles the special case of the pre-sliced ShapesData
     """
-    def __init__(self, db_path, compile_sensitivities):
+    def __init__(self, db_path, supplemental_shape_db_path, compile_sensitivities):
         self.db_path = db_path
-        self.tbl_name = SHAPE_DIR   # Deprecated?
+        self.supplemental_shape_db_path = supplemental_shape_db_path # supplemental shapes directory
         self.slices = {}            # maps shape name to DF containing that shape's data rows
-        self.file_map = self.create_file_map(db_path)
+        self.file_map = self.create_file_map(db_path, supplemental_shape_db_path)
         self.compile_sensitivities = compile_sensitivities
 
     def load_all(self, verbose=True):
@@ -148,7 +148,7 @@ class ShapeDataMgr(object):
         verbose and print("Done.")
 
     @classmethod
-    def create_file_map(cls, db_path):
+    def create_file_map(cls, db_path, supplemental_shape_db_path):
         """
         ShapeData is stored in gzipped slices of original 3.5 GB table.
         The files are in a "{db_name}.self/ShapeData/{shape_name}.csv.gz"
@@ -159,28 +159,33 @@ class ShapeDataMgr(object):
             shape_dir = os.path.join(db_path, 'Shapes', SHAPE_DIR)
         else:
             shape_dir = os.path.join(db_path, SHAPE_DIR)
-        shape_files_zip = glob(os.path.join(shape_dir, '*.csv.gz'))
-        shape_files_csv = glob(os.path.join(shape_dir, '*.csv'))
 
         file_map = {}
-        for filename in shape_files_zip + shape_files_csv:
-            basename = os.path.basename(filename)
-            shape_name = basename.split('.')[0]
-            file_map[shape_name] = filename
+        for base_folder in [shape_dir, supplemental_shape_db_path]:
+            if base_folder is None:
+                continue
 
-        # csv directory files get appended together when they are read in
-        shape_csv_dirs = glob(os.path.join(shape_dir, '*.csvd'))
+            shape_files_zip = glob(os.path.join(base_folder, '*.csv.gz'))
+            shape_files_csv = glob(os.path.join(base_folder, '*.csv'))
 
-        for shape_csv_dir in shape_csv_dirs:
-            shape_files_zip = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv.gz'))
-            shape_files_csv = glob(os.path.join(shape_dir, shape_csv_dir, '*.csv'))
-            # avoid duplicates for csv and zip files
-            zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
-            shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
-            basename = os.path.basename(shape_csv_dir)
-            shape_name = basename.split('.')[0]
-            if len(shape_files_zip + shape_files_csv):
-                file_map[shape_name] = shape_files_zip + shape_files_csv
+            for filename in shape_files_zip + shape_files_csv:
+                basename = os.path.basename(filename)
+                shape_name = basename.split('.')[0]
+                file_map[shape_name] = filename
+
+            # csv directory files get appended together when they are read in
+            shape_csv_dirs = glob(os.path.join(base_folder, '*.csvd'))
+
+            for shape_csv_dir in shape_csv_dirs:
+                shape_files_zip = glob(os.path.join(base_folder, shape_csv_dir, '*.csv.gz'))
+                shape_files_csv = glob(os.path.join(base_folder, shape_csv_dir, '*.csv'))
+                # avoid duplicates for csv and zip files
+                zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
+                shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
+                basename = os.path.basename(shape_csv_dir)
+                shape_name = basename.split('.')[0]
+                if len(shape_files_zip + shape_files_csv):
+                    file_map[shape_name] = shape_files_zip + shape_files_csv
 
         return file_map
 
@@ -199,7 +204,8 @@ class CsvDatabase(object):
 
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
-                 output_tables=False, compile_sensitivities=False, filter_columns=None, pkg_name=None):
+                 output_tables=False, compile_sensitivities=False, filter_columns=None, pkg_name=None,
+                 supplemental_shape_db_path=None):
         """
         Initialize a CsvDatabase.
 
@@ -217,6 +223,7 @@ class CsvDatabase(object):
         :param pkg_name: (str) the name of the Python package containing the etc/validation.csv file.
         """
         self.pathname = pathname
+        self.supplemental_shape_db_path = supplemental_shape_db_path
         self.output_tables = output_tables
         self.compile_sensitivities = compile_sensitivities
         self.mapped_cols = mapped_cols
@@ -239,7 +246,7 @@ class CsvDatabase(object):
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
-        self.shapes = ShapeDataMgr(pathname, compile_sensitivities)
+        self.shapes = ShapeDataMgr(pathname, supplemental_shape_db_path, compile_sensitivities)
 
         # cache data for all tables for which there are generated classes
         if load:
@@ -693,7 +700,7 @@ class CsvDatabase(object):
 
         if include_shapes:
             # Add shape tables to metadata
-            shapes_file_map = ShapeDataMgr.create_file_map(dbdir)
+            shapes_file_map = ShapeDataMgr.create_file_map(dbdir, self.supplemental_shape_db_path)
             metadata = self.metadata
             for tbl_name in shapes_file_map.keys():
                 metadata[tbl_name] = CsvMetadata(tbl_name, data_table=True)
