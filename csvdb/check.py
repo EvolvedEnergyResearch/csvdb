@@ -11,7 +11,7 @@ _False = ['f', 'n', 'false', 'no',  'off']
 _Bool  = _True + _False
 
 def str_to_bool(value):
-    return isinstance(value, types.StringTypes) and value.lower() in _True
+    return isinstance(value, str) and value.lower() in _True
 
 def _check_bool(series, nullable):
     bad = []
@@ -20,7 +20,7 @@ def _check_bool(series, nullable):
         if value is None and nullable:
             continue
 
-        if not isinstance(value, (bool, np.bool_)) and (not isinstance(value, types.StringTypes) or value.lower() not in _Bool):
+        if not isinstance(value, (bool, np.bool_)) and (not isinstance(value, str) or value.lower() not in _Bool):
             bad.append((i, value))
 
     return bad
@@ -101,7 +101,7 @@ class ValidationInfo(object):
         if self.folder:
             pattern = os.path.join(db.pathname, self.folder, '*')
             paths = glob(pattern)
-            self.values = map(_extract_name, paths)
+            self.values = list(map(_extract_name, paths))
 
         elif ref_tbl and ref_col:
             try:
@@ -121,9 +121,9 @@ class ValidationInfo(object):
         if extra_values:
             # parse / validate numbers
             if all(map(str.isdigit, extra_values)):
-                extra_values = map(int, extra_values)
+                extra_values = list(map(int, extra_values))
             elif all(map(_is_float, extra_values)):
-                extra_values = map(float, extra_values)
+                extra_values = list(map(float, extra_values))
 
             self.values += extra_values
 

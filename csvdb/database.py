@@ -65,7 +65,7 @@ def resourceStream(pkg_name, rel_path):
     import io
 
     text = getResource(pkg_name, rel_path)
-    return io.BytesIO(str(text))
+    return io.StringIO(str(text))
 
 class CsvMetadata(object):
     __slots__ = ['table_name', 'data_table', 'key_col', 'has_key_col', 'attr_cols',
@@ -388,10 +388,10 @@ class CsvDatabase(object):
             return None
 
         # this doesn't work when it's lower case, we actually want to match case, whatever that case may be
-        # values = [val.lower() if val and isinstance(val, types.StringTypes) else val for val in values]
+        # values = [val.lower() if val and isinstance(val, str) else val for val in values]
 
         for val in series.unique():
-            test_value = val if val and isinstance(val, types.StringTypes) else val
+            test_value = val if val and isinstance(val, str) else val
             if test_value not in values:
                 bad += [(i, val) for i in series[series == test_value].index]
 
@@ -487,7 +487,7 @@ class CsvDatabase(object):
             md = self.table_metadata(tbl_name)
 
             # use key column plus any df_cols to check for uniqueness
-            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_cols
+            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_filters + md.df_cols
 
             if key_cols:
                 # extract key columns as tuples to check for uniqueness
@@ -541,11 +541,6 @@ class CsvDatabase(object):
                 # If there are implicit or explicit values, check against them
                 if values:
                     bad = self.check_value_list(col_series, values)
-                    if bad and delete_orphans:
-                        msg = self.delete_orphans(tbl_name, df, val_info, bad, save_changes)
-                        msgs.append(msg)
-                        orphan_count += len(bad)
-
                 # Otherwise, if there's a type-checking function, call that
                 elif type_func:
                     bad = type_func(col_series, not val_info.not_null)
@@ -570,12 +565,17 @@ class CsvDatabase(object):
                                 value, i + 2, ref_tbl, ref_col))  # +1 for header; +1 to translate 0 offset
 
                         elif values:              # values are enumerated in validation.csv
-                            msgs.append("    Value '{}' at line {} not found in validation list".format(
-                                value, i + 2))  # +1 for header; +1 to translate 0 offset
+                            msgs.append("    Value '{}' at line {} not found in validation list {}".format(
+                                value, i + 2, values))  # +1 for header; +1 to translate 0 offset
 
                         elif type_func:
                             msgs.append("    Value '{}' at line {} failed data type check with function {}".format(
                                 value, i + 2, type_func.__name__))
+
+                    if delete_orphans:
+                        msg = self.delete_orphans(tbl_name, df, val_info, bad, save_changes)
+                        msgs.append(msg)
+                        orphan_count += len(bad)
 
         # collect indices of empty rows
         if drop_empty_rows:
@@ -601,6 +601,8 @@ class CsvDatabase(object):
 
             if fixable:
                 msgs.append("Writing table {} to '{}'".format(tbl_name, pathname))
+                if 'sensitivity' in df.columns:
+                    df['sensitivity'] = df['sensitivity'].replace(REF_SENSITIVITY, "")
                 self.write_table(df, pathname)
 
         return (fixable, msgs)
