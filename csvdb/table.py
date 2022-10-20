@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import pdb
 import re
+import time
 
 from .error import *
 from .utils import filter_query
@@ -113,8 +114,19 @@ class CsvTable(object):
         dfs = []
         for fn in filename:
             openFunc = gzip.open if fn.endswith('.gz') else open
-            with openFunc(fn, 'r') as f:
-                dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
+            wait = 1
+            while True:
+                try:
+                    with openFunc(fn, 'r') as f:
+                        dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
+                    break
+                except OSError:
+                    if wait<=128:
+                        print('Pausing {} seconds. File OSError reading path {}'.format(wait, fn))
+                        time.sleep(wait)
+                        wait *= 2
+                    else:
+                        raise
 
         unique_columns_tups = set([tuple(df.columns) for df in dfs])
         if len(unique_columns_tups) > 1:
