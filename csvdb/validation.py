@@ -87,8 +87,10 @@ def create_schema_file(dbdir, schema_file):
                 openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
-                with openFunc(abspath, 'rb') as csv:    # N.B. binary mode doesn't translate line endings
+                with openFunc(abspath, 'r') as csv:    # N.B. binary mode doesn't translate line endings
                     header = csv.readline().strip()
+                    if isinstance(header, bytes):
+                        header = header.decode()
                     schema.write(csvFile + ',')         # insert CSV basename in first column
                     schema.write(header + '\n')         # ensure consistent line endings
 
@@ -119,14 +121,13 @@ def update_from_schema(dbdir, schema_file, run):
 
             continue
 
-        try:
-            openFunc = gzip.open if re.match(ZIP_PATTERN, abspath) else open
-            with openFunc(abspath, 'rb') as csv:
-                header = csv.readline().strip()
+        openFunc = gzip.open if re.match(ZIP_PATTERN, abspath) else open
+        with openFunc(abspath, 'r') as csv:
+            header = csv.readline().strip()
+            if isinstance(header, bytes):
+                header = header.decode()
 
-            target_cols = header.split(',')
-        except:
-            pdb.set_trace()
+        target_cols = header.split(',')
 
         if target_cols != source_cols:
             source_cols = [col.strip() for col in source_cols]
