@@ -155,6 +155,9 @@ class ShapeDataMgr(object):
         This is a classmethod so it can be called by clean.py to generate
         CsvMetadata instances before creating the CsvDatabase.
         """
+        if db_path is None:
+            return {}
+
         if os.path.exists(os.path.join(db_path, 'Shapes', SHAPE_DIR)):
             shape_dir = os.path.join(db_path, 'Shapes', SHAPE_DIR)
         else:
@@ -280,7 +283,8 @@ class CsvDatabase(object):
             values = list(instances.values())
             return values[0]
 
-        pathname = os.path.normpath(pathname)
+        if pathname is not None:
+            pathname = os.path.normpath(pathname)
 
         try:
             return instances[pathname]
@@ -359,6 +363,9 @@ class CsvDatabase(object):
 
     def create_file_map(self):
         pathname = self.pathname
+
+        if pathname is None:
+            return
 
         if not os.path.exists(pathname):
             raise CsvdbException('Database path "{}" does not exist'.format(pathname))
