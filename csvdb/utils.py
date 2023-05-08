@@ -12,6 +12,12 @@ def col_match(col, value):
 
     return '{} == "{}"'.format(col, value)
 
+def ensure_tuple(obj):
+    if isinstance(obj, tuple):
+        return obj
+    else:
+        return (obj,)
+
 def filter_query(df, filters):
     """
     Convert a dict of filters into a string query suitable for a DataFrame.

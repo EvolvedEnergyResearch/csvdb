@@ -6,7 +6,7 @@ import logging
 from .database import CsvDatabase
 from .error import SubclassProtocolError, CsvdbException
 from .table import SENSITIVITY_COL, REF_SENSITIVITY
-from .utils import filter_query
+from .utils import filter_query, ensure_tuple
 
 
 class StringMap(object):
@@ -243,7 +243,15 @@ class DataObject(object):
         tbl = db.get_table(tbl_name)
         md = tbl.metadata
         if md.df_cols:
-            tup = self.load_timeseries(key, scenario, **filters)
+            keys = ensure_tuple(key)
+            for value in keys: # we iterate over the keys to see if any of the data exists
+                tup = self.load_timeseries(value, scenario, **filters)
+                if tup is not None and self._timeseries is not None:
+                    if keys[0] is not None:
+                        lst = list(tup)
+                        lst[tbl.get_columns().index(md.key_col)] = keys[0]  # we want the tup to have the first key that was passed in
+                        tup = tuple(lst)
+                    break # break when we find the first key that has data
         else:
             tup = self.__class__.get_row(key, scenario=scenario, **filters)
             cols = tbl.get_columns()

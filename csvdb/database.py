@@ -208,7 +208,7 @@ class CsvDatabase(object):
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
                  output_tables=False, compile_sensitivities=False, filter_columns=None, pkg_name=None,
-                 supplemental_shape_db_path=None):
+                 supplemental_shape_db_path=None,weather_datetime_filter=None,year_filter=None):
         """
         Initialize a CsvDatabase.
 
@@ -250,6 +250,8 @@ class CsvDatabase(object):
 
         self.create_file_map()
         self.shapes = ShapeDataMgr(pathname, supplemental_shape_db_path, compile_sensitivities)
+        self.weather_datetime_filter = weather_datetime_filter
+        self.year_filter = year_filter
 
         # cache data for all tables for which there are generated classes
         if load:
@@ -307,6 +309,13 @@ class CsvDatabase(object):
             metadata = self.metadata.get(name, CsvMetadata(name))
             tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols, filter_columns=filter_columns)
             self.table_objs[name] = tbl
+            if hasattr(tbl.data,'index') and ('weather_datetime' in tbl.data.index.names):
+                if self.weather_datetime_filter is not None:
+                    tbl.data = tbl.data[tbl.data.index.get_level_values('weather_datetime').isin(self.weather_datetime_filter)]
+            if hasattr(tbl.data,'index') and 'year' in tbl.data.index.names:
+                if self.year_filter is not None:
+                    tbl.data = tbl.data[tbl.data.index.get_level_values('year').isin(self.year_filter)]
+
             return tbl
 
     def tables_with_classes(self, include_on_demand=False):
