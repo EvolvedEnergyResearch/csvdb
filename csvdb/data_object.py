@@ -249,7 +249,7 @@ class DataObject(object):
                 if tup is not None and self._timeseries is not None:
                     if keys[0] is not None:
                         lst = list(tup)
-                        lst[tbl.get_columns().index(md.key_col)] = keys[0]  # we want the tup to have the first key that was passed in
+                        lst[md.attr_cols.index(md.key_col)] = keys[0]  # we want the tup to have the first key that was passed in
                         tup = tuple(lst)
                     break # break when we find the first key that has data
         else:
