@@ -120,9 +120,9 @@ class CsvTable(object):
                     with openFunc(fn, 'r') as f:
                         dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
                     break
-                except OSError:
-                    if wait<=128:
-                        print('Pausing {} seconds. File OSError reading path {}'.format(wait, fn))
+                except (OSError, pd.errors.EmptyDataError) as e:
+                    if wait<=7200:
+                        print('Pausing {} seconds. Error: "{}" when reading path: {}'.format(wait, e, fn))
                         time.sleep(wait)
                         wait *= 2
                     else:
