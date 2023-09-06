@@ -84,7 +84,7 @@ def _extract_name(path):
 # checking and conversion. Also collects values from a referenced folder or table.col.
 class ValidationInfo(object):
     def __init__(self, db, table_name, column_name, not_null, linked_column,
-                 dtype, folder, ref_tbl, ref_col, cascade_delete, extra_values):
+                 dtype, folder, ref_tbl, ref_col, ref_tbl2, ref_col2, cascade_delete, extra_values):
         self.table_name = table_name
         self.column_name = column_name
         self.not_null = str_to_bool(not_null)
@@ -94,6 +94,8 @@ class ValidationInfo(object):
         self.folder = folder
         self.ref_tbl = ref_tbl
         self.ref_col = ref_col
+        self.ref_tbl2 = ref_tbl2
+        self.ref_col2 = ref_col2
         self.cascade_delete = str_to_bool(cascade_delete)
 
         self.values = []    # all legal values given
@@ -112,7 +114,18 @@ class ValidationInfo(object):
             if ref_col not in tbl.data.columns:
                 raise ValidationFormatError("unknown column '{}' in table '{}'".format(ref_col, ref_tbl))
 
-            self.values = list(tbl.data[ref_col].unique())
+            if ref_tbl2 and ref_col2:
+                try:
+                    tbl2 = db.get_table(ref_tbl2)
+                except CsvdbException:
+                    raise ValidationFormatError("unknown table '{}'".format(ref_tbl2))
+
+                if ref_col2 not in tbl2.data.columns:
+                    raise ValidationFormatError("unknown column '{}' in table '{}'".format(ref_col2, ref_tbl2))
+
+                self.values = list(tbl.data[ref_col].unique()) + list(tbl2.data[ref_col2].unique())
+            else:
+                self.values = list(tbl.data[ref_col].unique())
 
             # TODO: handle this in metadata?
             if ref_col == 'shape':

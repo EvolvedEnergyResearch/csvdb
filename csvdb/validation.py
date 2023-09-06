@@ -79,6 +79,7 @@ def create_file_map(dbdir):
 def create_schema_file(dbdir, schema_file):
     file_map = create_file_map(dbdir)
 
+    finished_csvd_files = []
     with open(schema_file, 'w') as schema:
         for tblname, csvFile in file_map.items():
             csvFile = csvFile.replace('\\', '/')
@@ -86,6 +87,15 @@ def create_schema_file(dbdir, schema_file):
             if not tblname in Tables_to_skip:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
+
+                if r'.csvd/' in abspath:
+                    base_path = os.path.split(csvFile)[0]
+                    csvd_name = os.path.split(base_path)[1][:-5]
+                    csvFile = base_path + '/' + csvd_name + '.csv'
+                    if csvd_name in finished_csvd_files:
+                        continue
+                    else:
+                        finished_csvd_files.append(csvd_name)
 
                 with openFunc(abspath, 'r') as csv:    # N.B. binary mode doesn't translate line endings
                     header = csv.readline().strip()

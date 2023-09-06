@@ -446,17 +446,22 @@ class CsvDatabase(object):
         return msg
 
     def list_tables(self, skip_dir):
-        tables = []
+        tables = {}
 
         for dirpath, dirnames, filenames in os.walk(self.pathname, topdown=False):
             if skip_dir and skip_dir in dirpath:
                 continue
 
-            for filename in filenames:
-                if re.match(CSV_PATTERN, filename):
-                    basename = os.path.basename(filename)
-                    tbl_name = basename.split('.')[0]
-                    tables.append(tbl_name)
+            if os.path.basename(dirpath)[-5:] == CSV_DIR_PATTERN:
+                # we have a directory that should be treated like one csv file
+                tbl_name = os.path.basename(dirpath).split('.')[0]
+                tables[tbl_name] = [os.path.abspath(os.path.join(dirpath, filename)) for filename in filenames]
+            else:
+                for filename in filenames:
+                    if re.match(CSV_PATTERN, filename):
+                        basename = os.path.basename(filename)
+                        tbl_name = basename.split('.')[0]
+                        tables[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 
         return tables
 
@@ -559,6 +564,8 @@ class CsvDatabase(object):
                 type_func = val_info.type_func
                 ref_tbl = val_info.ref_tbl
                 ref_col = val_info.ref_col
+                ref_tbl2 = val_info.ref_tbl2
+                ref_col2 = val_info.ref_col2
                 bad = []
 
                 # If there are implicit or explicit values, check against them
@@ -584,8 +591,12 @@ class CsvDatabase(object):
                             reported_bad_values.add(value)
 
                         if ref_tbl and ref_col:   # values come from referenced column
-                            msgs.append("    Value '{}' at line {} not found in reference column {}.{}".format(
-                                value, i + 2, ref_tbl, ref_col))  # +1 for header; +1 to translate 0 offset
+                            if ref_tbl2 and ref_col2:
+                                msgs.append("    Value '{}' at line {} not found in reference column {}.{} or {}.{}".format(
+                                    value, i + 2, ref_tbl, ref_col, ref_tbl2, ref_col2))  # +1 for header; +1 to translate 0 offset
+                            else:
+                                msgs.append("    Value '{}' at line {} not found in reference column {}.{}".format(
+                                    value, i + 2, ref_tbl, ref_col))  # +1 for header; +1 to translate 0 offset
 
                         elif values:              # values are enumerated in validation.csv
                             msgs.append("    Value '{}' at line {} not found in validation list {}".format(
@@ -766,7 +777,7 @@ class CsvDatabase(object):
 
         extra_inputs = 'additional_valid_inputs'
         col_names = ['table_name', 'column_name', 'not_null', 'linked_column', 'dtype', 'folder',
-                     'referenced_table', 'referenced_field', 'cascade_delete', extra_inputs]
+                     'referenced_table', 'referenced_field', 'referenced_table2', 'referenced_field2', 'cascade_delete', extra_inputs]
         col_set = set(col_names)
 
         f = resourceStream(pkg_name, 'etc/validation.csv')
@@ -789,7 +800,7 @@ class CsvDatabase(object):
 
         for row in rows[1:]:    # skip column names
             (table_name, column_name, not_null, linked_column, dtype, folder,
-             referenced_table, referenced_field, cascade_delete, extra) = row[:count]
+             referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra) = row[:count]
 
             # convert "additional inputs" col into a list of strings of all non-empty values
             # from trailing, unnamed or generic (_c_NN) columns. If initial value is '', convert
@@ -797,7 +808,7 @@ class CsvDatabase(object):
             extra_values = ([extra] + [value for value in row[count:] if value != '']) if extra else []
 
             obj = ValidationInfo(self, table_name, column_name, not_null, linked_column, dtype, folder,
-                                 referenced_table, referenced_field, cascade_delete, extra_values)
+                                 referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra_values)
 
             key = (table_name, column_name)
             val_dict[key] = obj
