@@ -132,7 +132,9 @@ class CsvTable(object):
         if len(unique_columns_tups) > 1:
             raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_tups))
 
-        self.data = df = pd.concat(dfs)
+        self.data = df = pd.concat(dfs).reset_index(drop=True)
+
+
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
@@ -153,17 +155,16 @@ class CsvTable(object):
                 raise MissingKeyColumn(tbl_name, col)
 
             if df[col].hasnans:
-                df = df[~df[col].isnull()]
+                df = df[~df[col].isnull()].copy()
                 # raise MissingKeyValue(tbl_name, col)
 
             # ensure that keys are read as strings
-            df[col] = df[col].astype(str)
+            df.loc[:, col] = df[col].astype(str)
 
         # TODO: Document this
         # Convert empty (NaN) sensitivities to value of REF_SENSITIVITY
         if self.has_sensitivity_col(df):
-            s = df[SENSITIVITY_COL]
-            s.where(pd.notnull(s), other=REF_SENSITIVITY, inplace=True)
+            df.loc[pd.isnull(df[SENSITIVITY_COL]), SENSITIVITY_COL] = REF_SENSITIVITY
 
         elif self.compile_sensitivities:
             # if the data doesn't have a sensitivity column and we are compiling sensitivities, data is just None

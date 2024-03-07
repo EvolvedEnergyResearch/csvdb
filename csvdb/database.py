@@ -420,30 +420,6 @@ class CsvDatabase(object):
 
         return bad
 
-    def delete_orphans(self, tbl_name, df, val_info, bad_items, save_changes):
-        """
-        Delete (or report need to delete, if save_changes is False) rows found when checking
-        data values.
-        """
-        msg = ''
-
-        # make sure this is a properly set-up cascade-deletion situation
-        if not (val_info.cascade_delete and val_info.ref_tbl and val_info.ref_col):
-            return msg
-
-        verb = 'Deleting' if save_changes else 'Would delete'
-        bad_values = sorted(set([v for i, v in bad_items]))
-
-        msg = "{} {} orphaned rows from table {}, with values of {} in column {}".format(
-               verb, len(bad_items), tbl_name, bad_values, val_info.column_name)
-
-        if save_changes:
-            idxs = [idx for idx, value in bad_items]
-            df.drop(idxs, axis='rows', inplace=True)
-            pathname = self.file_map[tbl_name]
-            self.write_table(df, pathname)
-
-        return msg
 
     def list_tables(self, skip_dir):
         tables = {}
@@ -465,7 +441,7 @@ class CsvDatabase(object):
 
         return tables
 
-    def write_table(self, data, pathname):
+    def write_table(self, data, pathname, tbl_name):
         """
         Write the given data to the pathname as a .csv or .csv.gz file.
         If the filename ends in ".gz", the data is written using gzip.
@@ -477,8 +453,22 @@ class CsvDatabase(object):
         if not isinstance(data, pd.DataFrame):
             data = pd.DataFrame(data)
 
-        compression = None # replace this with 'infer' once we update to the new version of pandas
-        data.to_csv(pathname, index=None, compression=compression)
+        if type(pathname) is list:
+            self.csvd_write_table(data, pathname, tbl_name)
+        else:
+            data.to_csv(pathname, index=None, compression='infer')
+
+    def csvd_write_table(self, data, pathname, tbl_name):
+        md = self.table_metadata(tbl_name)
+        # use key column plus any df_cols to check for uniqueness
+        key_cols = ([md.key_col] if md.has_key_col else []) + md.df_filters + ([SENSITIVITY_COL] if SENSITIVITY_COL in md.df_cols else [])
+
+        for filepath in pathname:
+            df = pd.read_csv(filepath, na_values='', low_memory=False)
+            # filter data by matching against df using the key_cols
+            df_filter = df[key_cols].astype(str).sum(axis=1)
+            new_data = data[(data[key_cols].astype(str).sum(axis=1).isin(df_filter))].copy()
+            new_data.to_csv(filepath, index=False, compression='infer')
 
     def clean_table(self, tbl_name, val_dict, counts,
                     data=None,
@@ -606,9 +596,17 @@ class CsvDatabase(object):
                             msgs.append("    Value '{}' at line {} failed data type check with function {}".format(
                                 value, i + 2, type_func.__name__))
 
-                    if delete_orphans:
-                        msg = self.delete_orphans(tbl_name, df, val_info, bad, save_changes)
+                    if delete_orphans and (val_info.cascade_delete and val_info.ref_tbl and val_info.ref_col):
+                        verb = 'Deleting' if save_changes else 'Would delete'
+                        bad_values = sorted(set([v for i, v in bad]))
+
+                        msg = "{} {} orphaned rows from table {}, with values of {} in column {}".format(
+                            verb, len(bad), tbl_name, bad_values, val_info.column_name)
                         msgs.append(msg)
+
+                        idxs = [idx for idx, value in bad]
+                        df = df.drop(idxs, axis='rows').reset_index(drop=True)
+
                         orphan_count += len(bad)
 
         # collect indices of empty rows
@@ -634,10 +632,15 @@ class CsvDatabase(object):
                 df.drop(empty_row_idxs, axis='index', inplace=True)
 
             if fixable:
-                msgs.append("Writing table {} to '{}'".format(tbl_name, pathname))
+                msgs.append("\nWriting table {} to '{}'".format(tbl_name, pathname))
                 if 'sensitivity' in df.columns:
                     df['sensitivity'] = df['sensitivity'].replace(REF_SENSITIVITY, "")
-                self.write_table(df, pathname)
+
+                self.write_table(df, pathname, tbl_name)
+
+        if len(msgs)>0:
+            # add a divider line to separate the table messages
+            msgs = ['__________________________________________________________'] + msgs
 
         return (fixable, msgs)
 
@@ -711,6 +714,9 @@ class CsvDatabase(object):
                 print("\n*** Database errors found but save_changes is False; csv files were NOT modified")
 
         if print_msgs:
+            #write all_msgs to a file
+            with open(os.path.join(os.path.split(self.pathname)[0], 'cleaning_errors.txt'), 'w') as f:
+                f.write('\n'.join(all_msgs))
             for msg in all_msgs:
                 print(msg)
 
@@ -840,7 +846,7 @@ class CsvDatabase(object):
         errors = self.clean_table(tbl_name, val_dict, counts, data=df, check_unique=True, delete_orphans=False, trim_blanks=False, drop_empty_rows=False, drop_empty_cols=False, save_changes=False) if validate else None
 
         if not len(errors[1]):
-            self.write_table(df, path)
+            self.write_table(df, path, tbl_name)
 
         return errors
 

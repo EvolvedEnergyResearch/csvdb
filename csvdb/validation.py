@@ -259,7 +259,6 @@ def main_fun(dbdir, pkg_name, all=False, trim_blanks=False, drop_empty_rows=Fals
             db.validate(pkg_name,
                         skip_dir='ShapeData',           # make these cmdline args?
                         skip_tables=['GEOGRAPHIES'],
-
                         save_changes=save_changes,
                         trim_blanks=trim_blanks,
                         drop_empty_rows=drop_empty_rows,
