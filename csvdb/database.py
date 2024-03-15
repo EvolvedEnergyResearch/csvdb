@@ -173,7 +173,7 @@ class ShapeDataMgr(object):
 
             for filename in shape_files_zip + shape_files_csv:
                 basename = os.path.basename(filename)
-                shape_name = basename.split('.')[0]
+                shape_name = basename.split('.csv')[0]
                 file_map[shape_name] = filename
 
             # csv directory files get appended together when they are read in
@@ -186,7 +186,7 @@ class ShapeDataMgr(object):
                 zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
                 shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
                 basename = os.path.basename(shape_csv_dir)
-                shape_name = basename.split('.')[0]
+                shape_name = basename.split('.csv')[0]
                 if len(shape_files_zip + shape_files_csv):
                     file_map[shape_name] = shape_files_zip + shape_files_csv
 
@@ -530,7 +530,7 @@ class CsvDatabase(object):
             col_series = df[col_name]
 
             if trim_blanks:
-                for idx, value in col_series.iteritems():
+                for idx, value in col_series.items():
                     if isinstance(value, six.string_types):
                         stripped = re.sub(SPACES_PATTERN, ' ', value.strip())
                         if value != stripped:
