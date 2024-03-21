@@ -463,11 +463,21 @@ class CsvDatabase(object):
         # use key column plus any df_cols to check for uniqueness
         key_cols = ([md.key_col] if md.has_key_col else []) + md.df_filters + ([SENSITIVITY_COL] if SENSITIVITY_COL in md.df_cols else [])
 
+        if md.has_key_col==False:
+            if 'plant' in data.columns:
+                key_cols = ['plant'] + key_cols
+            else:
+                pdb.set_trace()
+
         for filepath in pathname:
-            df = pd.read_csv(filepath, na_values='', low_memory=False)
+            openFunc = gzip.open if filepath.endswith('.gz') else open
+            with openFunc(filepath, 'r') as f:
+                df = pd.read_csv(f, na_values='', low_memory=False)
             # filter data by matching against df using the key_cols
             df_filter = df[key_cols].astype(str).sum(axis=1)
             new_data = data[(data[key_cols].astype(str).sum(axis=1).isin(df_filter))].copy()
+            if len(new_data) == len(data):
+                print('Possible error when filtering for csvd file {}'.format(filepath))
             new_data.to_csv(filepath, index=False, compression='infer')
 
     def clean_table(self, tbl_name, val_dict, counts,
