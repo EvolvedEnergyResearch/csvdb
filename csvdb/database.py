@@ -522,7 +522,14 @@ class CsvDatabase(object):
                 combo_keys = [tup for tup in df[key_cols].itertuples(name=None, index=False)]
 
                 if len(combo_keys) != len(set(combo_keys)):
-                    msgs.append("\nDuplicate keys found in table {} for df_cols {}:".format(tbl_name, key_cols))
+                    # get just the keys that are duplicate
+                    seen, dupes = set(), set()
+                    for key in combo_keys:
+                        if key in seen:
+                            dupes.add(key)
+                        else:
+                            seen.add(key)
+                    msgs.append("\nDuplicate keys found in table {} for df_cols {}:".format(tbl_name, dupes))
                     reported = {}
                     prev = None
                     for key in sorted(combo_keys):
