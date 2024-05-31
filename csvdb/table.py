@@ -119,7 +119,7 @@ class CsvTable(object):
             wait = 1
             while True:
                 try:
-                    with openFunc(fn, 'r') as f:
+                    with openFunc(fn, 'r', encoding=None if fn.endswith('.gz') else 'utf-8') as f:
                         dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
                     break
                 except (OSError, pd.errors.EmptyDataError) as e:
