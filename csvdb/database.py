@@ -515,11 +515,11 @@ class CsvDatabase(object):
             md = self.table_metadata(tbl_name)
 
             # use key column plus any df_cols to check for uniqueness
-            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_filters + md.df_cols
+            key_cols = ([md.key_col] if md.has_key_col else []) + md.df_filters + [col for col in md.df_cols if col!='value']
 
             if key_cols:
                 # extract key columns as tuples to check for uniqueness
-                combo_keys = [tup for tup in df[key_cols].itertuples(name=None, index=False)]
+                combo_keys = [tup for tup in df[key_cols].fillna("").itertuples(name=None, index=False)]
 
                 if len(combo_keys) != len(set(combo_keys)):
                     # get just the keys that are duplicate
