@@ -7,7 +7,7 @@ setup(
     description='Python 3.8 library and scripts for interacting with data stored in CSV files.',
     platforms=['Windows', 'MacOS', 'Linux'],
 
-    packages=['csvdb', 'bin'],
+    packages=['csvdb'],
     entry_points={'console_scripts': ['genClasses = csvdb.genClasses:main',
                                       'csvdbSchema = csvdb.validation:main']},
     install_requires=['pandas'],
