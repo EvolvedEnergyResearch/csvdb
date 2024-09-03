@@ -472,7 +472,7 @@ class CsvDatabase(object):
         for filepath in pathname:
             openFunc = gzip.open if filepath.endswith('.gz') else open
             with openFunc(filepath, 'r') as f:
-                df = pd.read_csv(f, na_values='', low_memory=False)
+                df = pd.read_csv(f, na_filter=False, low_memory=False)
             # filter data by matching against df using the key_cols
             df_filter = df[key_cols].astype(str).sum(axis=1)
             new_data = data[(data[key_cols].astype(str).sum(axis=1).isin(df_filter))].copy()
