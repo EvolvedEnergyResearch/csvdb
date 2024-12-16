@@ -191,7 +191,6 @@ class CsvTable(object):
 
             df = df.drop_duplicates()
 
-        df = df.replace(np.inf, np.nan)
         # self.data = df = df.where(~pd.isnull(df), other=None) # this no longer works: https://stackoverflow.com/questions/14162723/replacing-pandas-or-numpy-nan-with-a-none-to-use-with-mysqldb
         self.data = df = df.replace({np.nan: None})
 
