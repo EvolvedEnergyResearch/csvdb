@@ -131,7 +131,7 @@ class ShapeDataMgr(object):
             for fn in filename:
                 if verbose:
                     print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-                df = pl.read_csv(fn, schema_overrides={'value': float}).to_pandas()
+                df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
                 if SENSITIVITY_COL in df.columns:
                     df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
                 if self.compile_sensitivities:
