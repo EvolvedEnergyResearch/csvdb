@@ -27,17 +27,18 @@ import re
 from .error import CsvdbException, ValidationFormatError
 from .table import CsvTable, REF_SENSITIVITY, SENSITIVITY_COL
 import pdb
+import polars as pl
 
 pd.set_option('display.width', 200)
 
 # case-insensitive match of *.csv and *.csv.gz files
-CSV_PATTERN = re.compile('.*\.csv(\.gz)?$', re.IGNORECASE)
+CSV_PATTERN = re.compile(r'.*\.csv(\.gz)?$', re.IGNORECASE)
 CSV_DIR_PATTERN = '.csvd'
 
-SPACES_PATTERN = re.compile('\s\s+')
+SPACES_PATTERN = re.compile(r'\s\s+')
 
 # case-insensitive match of *.gz files
-ZIP_PATTERN = re.compile('.*\.gz$', re.IGNORECASE)
+ZIP_PATTERN = re.compile(r'.*\.gz$', re.IGNORECASE)
 
 def getResource(pkg_name, rel_path):
     """
@@ -128,20 +129,18 @@ class ShapeDataMgr(object):
 
             dfs = []
             for fn in filename:
-                openFunc = gzip.open if re.match(ZIP_PATTERN, fn) else open
-                with openFunc(fn, 'rb') as f:
-                    if verbose:
-                        print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-                    df = pd.read_csv(f, index_col=None)
+                if verbose:
+                    print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
+                df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
+                if SENSITIVITY_COL in df.columns:
+                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
+                if self.compile_sensitivities:
                     if SENSITIVITY_COL in df.columns:
-                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
-                    if self.compile_sensitivities:
-                        if SENSITIVITY_COL in df.columns:
-                            df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
-                            df['name'] = shape_name
-                        else:
-                            df = None
-                    dfs.append(df)
+                        df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
+                        df['name'] = shape_name
+                    else:
+                        df = None
+                dfs.append(df)
 
             self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
 

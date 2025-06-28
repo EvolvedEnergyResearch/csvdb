@@ -25,6 +25,18 @@ def _check_bool(series, nullable):
 
     return bad
 
+def _check_str(series, nullable):
+    bad = []
+
+    for i, value in series.items():
+        if value is None and nullable:
+            continue
+
+        if not isinstance(value, str):
+            bad.append((i, value))
+
+    return bad
+
 def _check_type(series, aType, nullable):
     bad = []
 
@@ -48,6 +60,7 @@ _check_fns = {
     'int'            : _check_int,
     'float'          : _check_float,
     'bool'           : _check_bool,
+    'str'            : _check_str,
 }
 
 def _is_float(s):
