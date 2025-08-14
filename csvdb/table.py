@@ -136,10 +136,13 @@ class CsvTable(object):
 
         unique_columns_tups = set([tuple(df.columns) for df in dfs])
         if len(unique_columns_tups) > 1:
-            raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_tups))
-
-        self.data = df = pd.concat(dfs).reset_index(drop=True)
-
+            unique_columns_sets = set([frozenset(df.columns) for df in dfs])
+            if len(unique_columns_sets) > 1:
+                raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_sets))
+            else:
+                self.data = df =  pd.concat(dfs,sort=True).reset_index(drop=True)
+        else:
+            self.data = df = pd.concat(dfs).reset_index(drop=True)
 
 
         # TODO: skip this given data cleaning methods?
