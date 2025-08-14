@@ -191,9 +191,9 @@ class ShapeDataMgr(object):
 
         return file_map
 
-    def get_slice(self, name):
+    def get_slice(self, name, verbose=True):
         if not self.slices:
-            self.load_all()
+            self.load_all(verbose)
 
         #name = name.replace(' ', '_')
         return self.slices[name]
