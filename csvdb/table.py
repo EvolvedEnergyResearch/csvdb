@@ -173,6 +173,7 @@ class CsvTable(object):
         # TODO: Document this
         # Convert empty (NaN) sensitivities to value of REF_SENSITIVITY
         if self.has_sensitivity_col(df):
+            df[SENSITIVITY_COL] = df[SENSITIVITY_COL].astype(object)
             df.loc[pd.isnull(df[SENSITIVITY_COL]), SENSITIVITY_COL] = REF_SENSITIVITY
 
         elif self.compile_sensitivities:
