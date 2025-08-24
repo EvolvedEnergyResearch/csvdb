@@ -68,10 +68,16 @@ def create_file_map(dbdir):
 
         for filename in filenames:
             if re.match(CSV_PATTERN, filename):
-                basename = os.path.basename(filename)
-                tblname = basename.split('.')[0]   # removes either .csv or .csv.gz
+                if '.csvd' in dirpath:
+                    tblname = os.path.split(dirpath)[1][:-5]
+                else:
+                    basename = os.path.basename(filename)
+                    tblname = basename.split('.')[0]   # removes either .csv or .csv.gz
+
                 abspath = os.path.abspath(os.path.join(dirpath, filename)).replace('\\', '/')
-                file_map[tblname] = abspath[prefixLen:]     # save path relative to dbdir
+                if tblname not in file_map:
+                    file_map[tblname] = []
+                file_map[tblname].append(abspath[prefixLen:])     # save path relative to dbdir
 
     print("Found {} .CSV files for {}".format(len(file_map), dbdir))
     return file_map
@@ -81,21 +87,22 @@ def create_schema_file(dbdir, schema_file):
 
     finished_csvd_files = []
     with open(schema_file, 'w') as schema:
-        for tblname, csvFile in file_map.items():
-            csvFile = csvFile.replace('\\', '/')
+        for tblname, csvFileList in file_map.items():
+            csvFile = csvFileList[0].replace('\\', '/')
 
             if not tblname in Tables_to_skip:
                 openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
                 if r'.csvd/' in abspath:
-                    base_path = os.path.split(csvFile)[0]
-                    csvd_name = os.path.split(base_path)[1][:-5]
-                    csvFile = base_path + '/' + csvd_name + '.csv'
+                    base_path = os.path.split(os.path.split(csvFile)[0])[0]
+                    csvd_name = os.path.split(os.path.split(csvFile)[0])[1][:-5]
                     if csvd_name in finished_csvd_files:
                         continue
                     else:
                         finished_csvd_files.append(csvd_name)
+                    csvFile = base_path + '/' + csvd_name + '.csv'
+
 
                 with openFunc(abspath, 'r') as csv:    # N.B. binary mode doesn't translate line endings
                     header = csv.readline().strip()
@@ -119,53 +126,55 @@ def update_from_schema(dbdir, schema_file, run):
         basename = os.path.basename(relpath)
         tbl_name = basename.split('.')[0]
 
-        csvFile = file_map.get(tbl_name)
+        csvFileList = file_map.get(tbl_name)
 
-        if not (csvFile and os.path.exists(abspath)):
+        if csvFileList is None:
             print('Creating empty file {}'.format(relpath))
             if run:
                 mkdirs(os.path.dirname(abspath))
                 with open(abspath, 'w') as f:
                     f.write(','.join(source_cols))
                     f.write('\n')
-
             continue
 
-        openFunc = gzip.open if re.match(ZIP_PATTERN, abspath) else open
-        with openFunc(abspath, 'r') as csv:
-            header = csv.readline().strip()
-            if isinstance(header, bytes):
-                header = header.decode()
+        for csvFile in file_map[tbl_name]:
+            csvpath = os.path.join(dbdir, csvFile).replace('\\', '/')
 
-        target_cols = header.split(',')
+            openFunc = gzip.open if re.match(ZIP_PATTERN, csvpath) else open
+            with openFunc(csvpath, 'r') as csv:
+                header = csv.readline().strip()
+                if isinstance(header, bytes):
+                    header = header.decode()
 
-        if target_cols != source_cols:
-            source_cols = [col.strip() for col in source_cols]
-            target_cols = [col.strip() for col in target_cols]
+            target_cols = header.split(',')
 
-            source_set = set(source_cols)
-            target_set = set(target_cols)
+            if target_cols != source_cols:
+                source_cols = [col.strip() for col in source_cols]
+                target_cols = [col.strip() for col in target_cols]
 
-            extra = target_set - source_set
-            missing = source_set - target_set
-            reorder = (source_set == target_set) and (source_cols != target_cols)
+                source_set = set(source_cols)
+                target_set = set(target_cols)
 
-            if extra or missing or reorder:
-                print('{}:'.format(relpath))
-                extra   and print(' - dropping extra columns {}'.format(sorted(extra)))
-                missing and print(' - adding missing cols {}'.format(sorted(missing)))
-                reorder and print(' - reordering columns')
+                extra = target_set - source_set
+                missing = source_set - target_set
+                reorder = (source_set == target_set) and (source_cols != target_cols)
 
-            if run:
-                new = pd.DataFrame(columns=source_cols)     # all columns, in correct order
-                old = pd.read_csv(abspath, index_col=None)
-                old.columns = [col.strip() for col in old.columns]
+                if extra or missing or reorder:
+                    print('{}:'.format(relpath))
+                    extra   and print(' - dropping extra columns {}'.format(sorted(extra)))
+                    missing and print(' - adding missing cols {}'.format(sorted(missing)))
+                    reorder and print(' - reordering columns')
 
-                if len(old) > 0:
-                    for col in source_set.intersection(target_set):
-                        new[col] = old[col]
+                if run:
+                    new = pd.DataFrame(columns=source_cols)     # all columns, in correct order
+                    old = pd.read_csv(csvpath, index_col=None)
+                    old.columns = [col.strip() for col in old.columns]
 
-                new.to_csv(abspath, index=None)
+                    if len(old) > 0:
+                        for col in source_set.intersection(target_set):
+                            new[col] = old[col]
+
+                    new.to_csv(csvpath, index=None)
 
 @click.command()
 
