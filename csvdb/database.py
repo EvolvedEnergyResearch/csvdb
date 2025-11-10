@@ -123,28 +123,32 @@ class ShapeDataMgr(object):
 
         verbose and print("Reading shape data:")
 
-        for shape_name, filename in self.file_map.items():
-            if type(filename) is not list:
-                filename = [filename]
-
-            dfs = []
-            for fn in filename:
-                if verbose:
-                    print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-                df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
-                if SENSITIVITY_COL in df.columns:
-                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
-                if self.compile_sensitivities:
-                    if SENSITIVITY_COL in df.columns:
-                        df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
-                        df['name'] = shape_name
-                    else:
-                        df = None
-                dfs.append(df)
-
-            self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
+        for shape_name in self.file_map:
+            self.load_one(shape_name, verbose)
 
         verbose and print("Done.")
+
+    def load_one(self, shape_name, verbose=True):
+        filename = self.file_map.get(shape_name)
+        if type(filename) is not list:
+            filename = [filename]
+
+        dfs = []
+        for fn in filename:
+            if verbose:
+                print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
+            df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
+            if SENSITIVITY_COL in df.columns:
+                df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
+            if self.compile_sensitivities:
+                if SENSITIVITY_COL in df.columns:
+                    df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
+                    df['name'] = shape_name
+                else:
+                    df = None
+            dfs.append(df)
+
+        self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
 
     @classmethod
     def create_file_map(cls, db_path, supplemental_shape_db_path):
@@ -191,11 +195,13 @@ class ShapeDataMgr(object):
 
         return file_map
 
-    def get_slice(self, name, verbose=True):
-        if not self.slices:
+    def get_slice(self, name, verbose=True, load_all=True):
+        if not self.slices and load_all:
             self.load_all(verbose)
 
-        #name = name.replace(' ', '_')
+        if name not in self.slices:
+            self.load_one(name, verbose)
+
         return self.slices[name]
 
 class CsvDatabase(object):
