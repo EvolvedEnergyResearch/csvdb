@@ -123,42 +123,46 @@ class ShapeDataMgr(object):
 
         verbose and print("Reading shape data:")
 
-        for shape_name, filename in self.file_map.items():
-            if type(filename) is not list:
-                filename = [filename]
-
-            dfs = []
-            shape_has_sen = 'unknown'
-            for fn in filename:
-                if verbose:
-                    print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-                if self.compile_sensitivities:
-                    if shape_has_sen == 'unknown':
-                        # for speed, we assume columns match. Just check first file.
-                        cols = pl.read_csv(fn, n_rows=1, has_header=True, glob=False).columns
-                        shape_has_sen = SENSITIVITY_COL in cols
-
-                    if shape_has_sen:
-                        try:
-                            lf = pl.scan_csv(fn, has_header=True, schema_overrides={SENSITIVITY_COL: pl.Categorical})
-                            df = lf.select(pl.col(SENSITIVITY_COL)).unique().collect(streaming=True)
-                            df = df.to_pandas()
-                        except:
-                            print('Scan broke, reading csv as a fallback')
-                            df = pl.read_csv(fn, glob=False, columns=[SENSITIVITY_COL]).unique().to_pandas()
-                        df['name'] = shape_name
-                    else:
-                        df = None
-                else:
-                    df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
-                    if SENSITIVITY_COL in df.columns:
-                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
-
-                dfs.append(df)
-
-            self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
+        for shape_name in self.file_map:
+            self.load_one(shape_name, verbose)
 
         verbose and print("Done.")
+
+    def load_one(self, shape_name, verbose=True):
+        filename = self.file_map.get(shape_name)
+        if type(filename) is not list:
+            filename = [filename]
+
+        dfs = []
+        shape_has_sen = 'unknown'
+        for fn in filename:
+            if verbose:
+                print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
+            if self.compile_sensitivities:
+                if shape_has_sen == 'unknown':
+                    # for speed, we assume columns match. Just check first file.
+                    cols = pl.read_csv(fn, n_rows=1, has_header=True, glob=False).columns
+                    shape_has_sen = SENSITIVITY_COL in cols
+
+                if shape_has_sen:
+                    try:
+                        lf = pl.scan_csv(fn, has_header=True, schema_overrides={SENSITIVITY_COL: pl.Categorical})
+                        df = lf.select(pl.col(SENSITIVITY_COL)).unique().collect(streaming=True)
+                        df = df.to_pandas()
+                    except:
+                        print('Scan broke, reading csv as a fallback')
+                        df = pl.read_csv(fn, glob=False, columns=[SENSITIVITY_COL]).unique().to_pandas()
+                    df['name'] = shape_name
+                else:
+                    df = None
+            else:
+                df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
+                if SENSITIVITY_COL in df.columns:
+                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
+
+            dfs.append(df)
+
+        self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
 
     @classmethod
     def create_file_map(cls, db_path, supplemental_shape_db_path):
@@ -205,11 +209,13 @@ class ShapeDataMgr(object):
 
         return file_map
 
-    def get_slice(self, name, verbose=True):
-        if not self.slices:
+    def get_slice(self, name, verbose=True, load_all=True):
+        if not self.slices and load_all:
             self.load_all(verbose)
 
-        #name = name.replace(' ', '_')
+        if name not in self.slices:
+            self.load_one(name, verbose)
+
         return self.slices[name]
 
 class CsvDatabase(object):
