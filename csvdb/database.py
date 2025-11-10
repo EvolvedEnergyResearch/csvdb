@@ -128,18 +128,32 @@ class ShapeDataMgr(object):
                 filename = [filename]
 
             dfs = []
+            shape_has_sen = 'unknown'
             for fn in filename:
                 if verbose:
                     print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-                df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
-                if SENSITIVITY_COL in df.columns:
-                    df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
                 if self.compile_sensitivities:
-                    if SENSITIVITY_COL in df.columns:
-                        df = df[SENSITIVITY_COL].to_frame().drop_duplicates()
+                    if shape_has_sen == 'unknown':
+                        # for speed, we assume columns match. Just check first file.
+                        cols = pl.read_csv(fn, n_rows=1, has_header=True, glob=False).columns
+                        shape_has_sen = SENSITIVITY_COL in cols
+
+                    if shape_has_sen:
+                        try:
+                            lf = pl.scan_csv(fn, has_header=True, schema_overrides={SENSITIVITY_COL: pl.Categorical})
+                            df = lf.select(pl.col(SENSITIVITY_COL)).unique().collect(streaming=True)
+                            df = df.to_pandas()
+                        except:
+                            print('Scan broke, reading csv as a fallback')
+                            df = pl.read_csv(fn, glob=False, columns=[SENSITIVITY_COL]).unique().to_pandas()
                         df['name'] = shape_name
                     else:
                         df = None
+                else:
+                    df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
+                    if SENSITIVITY_COL in df.columns:
+                        df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
+
                 dfs.append(df)
 
             self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
