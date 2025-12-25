@@ -124,11 +124,11 @@ class ShapeDataMgr(object):
         verbose and print("Reading shape data:")
 
         for shape_name in self.file_map:
-            self.load_one(shape_name, verbose)
+            self.load_one(shape_name, verbose, archive=True)
 
         verbose and print("Done.")
 
-    def load_one(self, shape_name, verbose=True):
+    def load_one(self, shape_name, verbose=True, archive=True):
         filename = self.file_map.get(shape_name)
         if type(filename) is not list:
             filename = [filename]
@@ -162,7 +162,10 @@ class ShapeDataMgr(object):
 
             dfs.append(df)
 
-        self.slices[shape_name] = None if all([df is None for df in dfs]) else pd.concat(dfs)
+        shape_concat = None if all([df is None for df in dfs]) else pd.concat(dfs)
+        if archive:
+            self.slices[shape_name] = shape_concat
+        return shape_concat
 
     @classmethod
     def create_file_map(cls, db_path, supplemental_shape_db_path):
@@ -209,12 +212,12 @@ class ShapeDataMgr(object):
 
         return file_map
 
-    def get_slice(self, name, verbose=True, load_all=True):
+    def get_slice(self, name, verbose=True, load_all=True, archive=True):
         if not self.slices and load_all:
             self.load_all(verbose)
 
         if name not in self.slices:
-            self.load_one(name, verbose)
+            return self.load_one(name, verbose, archive=archive)
 
         return self.slices[name]
 
