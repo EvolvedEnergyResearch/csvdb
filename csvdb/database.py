@@ -26,8 +26,8 @@ import pandas as pd
 import re
 from .error import CsvdbException, ValidationFormatError
 from .table import CsvTable, REF_SENSITIVITY, SENSITIVITY_COL
+from .csv_reader import normalize_csv_engine, read_csv_frame
 import pdb
-import polars as pl
 
 pd.set_option('display.width', 200)
 
@@ -110,12 +110,41 @@ class ShapeDataMgr(object):
     """
     Handles the special case of the pre-sliced ShapesData
     """
-    def __init__(self, db_path, supplemental_shape_db_path, compile_sensitivities):
+    def __init__(self, db_path, supplemental_shape_db_path, compile_sensitivities, csv_engine='auto'):
         self.db_path = db_path
         self.supplemental_shape_db_path = supplemental_shape_db_path # supplemental shapes directory
         self.slices = {}            # maps shape name to DF containing that shape's data rows
         self.file_map = self.create_file_map(db_path, supplemental_shape_db_path)
         self.compile_sensitivities = compile_sensitivities
+        self.csv_engine = normalize_csv_engine(csv_engine)
+        self.read_diagnostics = {}
+
+    def _record_read_result(self, shape_name, filepath, read_result):
+        diag = self.read_diagnostics.setdefault(shape_name, {
+            'shape': shape_name,
+            'requested_engine': self.csv_engine,
+            'selected_engine': None,
+            'fallback_count': 0,
+            'fallback_reasons': [],
+            'files': [],
+        })
+
+        reason = read_result.fallback_reason
+        diag['files'].append({
+            'file': filepath,
+            'engine_used': read_result.engine_used,
+            'fallback_reason': reason,
+        })
+
+        if diag['selected_engine'] is None:
+            diag['selected_engine'] = read_result.engine_used
+        elif diag['selected_engine'] != read_result.engine_used:
+            diag['selected_engine'] = 'mixed'
+
+        if reason:
+            diag['fallback_count'] += 1
+            diag['fallback_reasons'].append({'file': filepath, 'reason': reason})
+            print("WARNING: Shape {} fell back to pandas while reading '{}': {}".format(shape_name, filepath, reason))
 
     def load_all(self, verbose=True):
         if self.slices:
@@ -137,7 +166,16 @@ class ShapeDataMgr(object):
         for fn in filename:
             if verbose:
                 print("Reading shape data: {} | file: {}".format(shape_name, os.path.split(fn)[1]))
-            df = pl.read_csv(fn, schema_overrides={'value': float}, glob=False).to_pandas()
+
+            result = read_csv_frame(
+                fn,
+                csv_engine=self.csv_engine,
+                is_gzip=fn.endswith('.gz'),
+                options={'schema_overrides': {'value': float}},
+            )
+            self._record_read_result(shape_name, fn, result)
+
+            df = result.frame.to_pandas() if hasattr(result.frame, 'to_pandas') else result.frame
             if SENSITIVITY_COL in df.columns:
                 df[SENSITIVITY_COL] = df[SENSITIVITY_COL].fillna(REF_SENSITIVITY)
             if self.compile_sensitivities:
@@ -213,7 +251,7 @@ class CsvDatabase(object):
     def __init__(self, pathname=None, load=True, metadata=None, mapped_cols=None,
                  tables_to_not_load=None, tables_without_classes=None, tables_to_ignore=None,
                  output_tables=False, compile_sensitivities=False, filter_columns=None, pkg_name=None,
-                 supplemental_shape_db_path=None,weather_datetime_filter=None,year_filter=None):
+                 supplemental_shape_db_path=None, weather_datetime_filter=None, year_filter=None, csv_engine='auto'):
         """
         Initialize a CsvDatabase.
 
@@ -238,6 +276,8 @@ class CsvDatabase(object):
         # maps table names => file names under the database root folder
         self.file_map = {}
         self.filter_columns = filter_columns or []
+        self.csv_engine = normalize_csv_engine(csv_engine)
+        self.table_read_diagnostics = {}
 
         self.pkg_name = pkg_name
         self.val_dict = None         # stored when first read
@@ -254,7 +294,7 @@ class CsvDatabase(object):
         tables_to_not_load = tables_to_not_load or []
 
         self.create_file_map()
-        self.shapes = ShapeDataMgr(pathname, supplemental_shape_db_path, compile_sensitivities)
+        self.shapes = ShapeDataMgr(pathname, supplemental_shape_db_path, compile_sensitivities, csv_engine=self.csv_engine)
         self.weather_datetime_filter = weather_datetime_filter
         self.year_filter = year_filter
 
@@ -293,8 +333,19 @@ class CsvDatabase(object):
         if pathname is not None:
             pathname = os.path.normpath(pathname)
 
+        requested_engine = kwargs.get('csv_engine')
+
         try:
-            return instances[pathname]
+            instance = instances[pathname]
+            if requested_engine is not None:
+                requested_engine = normalize_csv_engine(requested_engine)
+                if instance.csv_engine != requested_engine:
+                    raise CsvdbException(
+                        "Cached CsvDatabase for '{}' was created with csv_engine='{}' but '{}' was requested".format(
+                            pathname, instance.csv_engine, requested_engine
+                        )
+                    )
+            return instance
 
         except KeyError:
             instances[pathname] = instance = cls(pathname, **kwargs)
@@ -314,6 +365,7 @@ class CsvDatabase(object):
             metadata = self.metadata.get(name, CsvMetadata(name))
             tbl = CsvTable(self, name, metadata, self.output_tables, self.compile_sensitivities, mapped_cols=self.mapped_cols, filter_columns=filter_columns)
             self.table_objs[name] = tbl
+            self.table_read_diagnostics[name] = dict(tbl.read_diagnostics)
             if hasattr(tbl.data,'index') and ('weather_datetime' in tbl.data.index.names):
                 if self.weather_datetime_filter is not None:
                     tbl.data = tbl.data[tbl.data.index.get_level_values('weather_datetime').isin(self.weather_datetime_filter)]
@@ -358,6 +410,18 @@ class CsvDatabase(object):
         with open(pathname, 'r') as f:
             headers = f.readline().strip()
         result = headers.split(',')
+        return result
+
+    def get_read_diagnostics(self, table_name=None, include_shapes=True):
+        if table_name:
+            result = {'table': self.table_read_diagnostics.get(table_name)}
+            if include_shapes:
+                result['shape'] = self.shapes.read_diagnostics.get(table_name)
+            return result
+
+        result = {'tables': dict(self.table_read_diagnostics)}
+        if include_shapes:
+            result['shapes'] = dict(self.shapes.read_diagnostics)
         return result
 
     @staticmethod

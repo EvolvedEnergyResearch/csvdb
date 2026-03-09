@@ -20,16 +20,25 @@ def ensure_tuple(obj):
 
 def filter_query(df, filters):
     """
-    Convert a dict of filters into a string query suitable for a DataFrame.
+    Filter a DataFrame by exact column/value matches using boolean masks.
     """
     if not filters:
         return df
 
-    conds = [col_match(attr, value) for attr, value in filters.items()]
-    query = ' and '.join(conds)
+    # Preserve legacy query behavior: only built-in int/float are numeric predicates.
+    # Other scalar types (e.g., numpy.int64) were previously string-compared.
+    mask = None
+    for attr, value in filters.items():
+        col = df[attr]
+        if value is None:
+            cond = col.isna()
+        elif isinstance(value, (int, float)):
+            cond = col == value
+        else:
+            cond = col == str(value)
+        mask = cond if mask is None else (mask & cond)
 
-    result = df.query(query)
-    return result
+    return df.loc[mask]
 
 def camelCase(s):
     """

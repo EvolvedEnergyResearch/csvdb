@@ -1,11 +1,12 @@
 
-import gzip
 import pandas as pd
 import numpy as np
 import pdb
+import polars as pl
 import re
 import time
 
+from .csv_reader import read_csv_frame
 from .error import *
 from .utils import filter_query
 
@@ -34,6 +35,7 @@ class CsvTable(object):
         self.str_cols = mapped_cols.get(tbl_name, None) if mapped_cols else None
         self.filter_columns = filter_columns or []
         self.data_class = None
+        self.read_diagnostics = {}
         self.load_all()
 
     def _compute_metadata(self):
@@ -94,9 +96,77 @@ class CsvTable(object):
     def __str__(self):
         return "<{} {}>".format(self.__class__.__name__, self.name)
 
+    def _reset_read_diagnostics(self):
+        self.read_diagnostics = {
+            'table': self.name,
+            'requested_engine': self.db.csv_engine,
+            'selected_engine': None,
+            'fallback_count': 0,
+            'fallback_reasons': [],
+            'files': [],
+        }
+
+    def _record_read_result(self, filepath, read_result):
+        reason = read_result.fallback_reason
+        self.read_diagnostics['files'].append({
+            'file': filepath,
+            'engine_used': read_result.engine_used,
+            'fallback_reason': reason,
+        })
+
+        if reason:
+            self.read_diagnostics['fallback_count'] += 1
+            self.read_diagnostics['fallback_reasons'].append({
+                'file': filepath,
+                'reason': reason,
+            })
+            print("WARNING: Table {} fell back to pandas while reading '{}': {}".format(self.name, filepath, reason))
+
+    @staticmethod
+    def _concat_pandas_frames(dfs):
+        if not dfs:
+            return pd.DataFrame()
+
+        unique_columns_tups = set([tuple(df.columns) for df in dfs])
+        if len(unique_columns_tups) > 1:
+            unique_columns_sets = set([frozenset(df.columns) for df in dfs])
+            if len(unique_columns_sets) > 1:
+                raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_sets))
+            return pd.concat(dfs, sort=True).reset_index(drop=True)
+
+        return pd.concat(dfs).reset_index(drop=True)
+
+    @staticmethod
+    def _concat_polars_frames(dfs):
+        if not dfs:
+            return pl.DataFrame()
+
+        unique_columns_tups = set([tuple(df.columns) for df in dfs])
+        if len(unique_columns_tups) > 1:
+            unique_columns_sets = set([frozenset(df.columns) for df in dfs])
+            if len(unique_columns_sets) > 1:
+                raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_sets))
+
+            sorted_cols = sorted(list(unique_columns_sets.pop()))
+            dfs = [df.select(sorted_cols) for df in dfs]
+
+        return pl.concat(dfs, how='vertical_relaxed')
+
+    def _concat_frames(self, dfs):
+        if not dfs:
+            return pd.DataFrame(), 'pandas'
+
+        if all(isinstance(df, pl.DataFrame) for df in dfs):
+            return self._concat_polars_frames(dfs), 'polars'
+
+        pandas_frames = [df.to_pandas() if isinstance(df, pl.DataFrame) else df for df in dfs]
+        return self._concat_pandas_frames(pandas_frames), 'pandas'
+
     def load_all(self):
         if self.data is not None:
             return self.data
+
+        self._reset_read_diagnostics()
 
         db = self.db
         tbl_name = self.name
@@ -105,9 +175,6 @@ class CsvTable(object):
         if not filename:
             raise CsvdbException('Missing filename for table "{}"'.format(tbl_name))
 
-        # Avoid reading empty strings as nan (sensitivity column must be None)
-        converters = {col: str for col in self.str_cols} if self.str_cols else {}
-
         if type(filename) is not list:
             filename = [filename]
 
@@ -115,17 +182,20 @@ class CsvTable(object):
         for fn in filename:
             if not (fn.endswith('.gz') or fn.endswith('.csv')):
                 continue
-            openFunc = gzip.open if fn.endswith('.gz') else open
+
             wait = 1
             while True:
                 try:
-                    if fn.endswith('.gz'):
-                        with openFunc(fn, 'r', encoding=None) as f:
-                            dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
-                    else:
-                        with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
-                            dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
+                    read_result = read_csv_frame(
+                        fn,
+                        csv_engine=db.csv_engine,
+                        str_cols=self.str_cols,
+                        is_gzip=fn.endswith('.gz'),
+                    )
+                    dfs.append(read_result.frame)
+                    self._record_read_result(fn, read_result)
                     break
+
                 except (OSError, pd.errors.EmptyDataError) as e:
                     if wait<=7200:
                         print('Pausing {} seconds. Error: "{}" when reading path: {}'.format(wait, e, fn))
@@ -134,16 +204,23 @@ class CsvTable(object):
                     else:
                         raise
 
-        unique_columns_tups = set([tuple(df.columns) for df in dfs])
-        if len(unique_columns_tups) > 1:
-            unique_columns_sets = set([frozenset(df.columns) for df in dfs])
-            if len(unique_columns_sets) > 1:
-                raise CsvdbException('Columns found to differ between csv directory files. Columns include: {}'.format(unique_columns_sets))
-            else:
-                self.data = df =  pd.concat(dfs,sort=True).reset_index(drop=True)
-        else:
-            self.data = df = pd.concat(dfs).reset_index(drop=True)
+        if not dfs:
+            raise CsvdbException('No readable CSV files found for table {}: {}'.format(tbl_name, filename))
 
+        df, selected_engine = self._concat_frames(dfs)
+        self.read_diagnostics['selected_engine'] = selected_engine
+
+        if isinstance(df, pl.DataFrame):
+            # Keep pandas as the public dataframe type.
+            df = df.to_pandas()
+            # Pandas normalizes multiline CSV text to LF; match that behavior.
+            for text_col in ('notes', 'source'):
+                if text_col in df.columns:
+                    ser = df[text_col]
+                    if ser.map(lambda v: isinstance(v, str) and '\r\n' in v).any():
+                        df.loc[:, text_col] = ser.map(lambda v: v.replace('\r\n', '\n') if isinstance(v, str) else v)
+
+        self.data = df
 
         # TODO: skip this given data cleaning methods?
         # drop leading or trailing blanks from column names
@@ -276,4 +353,3 @@ class CsvTable(object):
         key_col = self.db.get_key_col(self.name)
         result = df.query("%s == %r" % (key_col, key_value))
         return result.copy(deep=True) if copy else result
-
