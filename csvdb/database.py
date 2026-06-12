@@ -128,10 +128,17 @@ class ShapeDataMgr(object):
 
         verbose and print("Done.")
 
-    def load_one(self, shape_name, verbose=True):
+    def load_one(self, shape_name, verbose=True, years=None):
         filename = self.file_map.get(shape_name)
         if type(filename) is not list:
             filename = [filename]
+
+        # Filter multi-file shapes by year prefix if years are specified
+        if years and len(filename) > 1:
+            year_prefixes = tuple(str(y) + '_' for y in years)
+            filtered = [fn for fn in filename if os.path.basename(fn).startswith(year_prefixes)]
+            if filtered:
+                filename = filtered
 
         dfs = []
         shape_has_sen = 'unknown'
@@ -209,12 +216,12 @@ class ShapeDataMgr(object):
 
         return file_map
 
-    def get_slice(self, name, verbose=True, load_all=True):
+    def get_slice(self, name, verbose=True, load_all=True, years=None):
         if not self.slices and load_all:
             self.load_all(verbose)
 
         if name not in self.slices:
-            self.load_one(name, verbose)
+            self.load_one(name, verbose, years=years)
 
         return self.slices[name]
 
