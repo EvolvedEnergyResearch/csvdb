@@ -1,13 +1,43 @@
 
 import gzip
+import io
+import logging
 import pandas as pd
 import numpy as np
+import polars as pl
 import pdb
 import re
 import time
 
 from .error import *
 from .utils import filter_query
+
+
+def _read_output_csv_polars(fn):
+    """Parse one output-table CSV with polars and return a pandas DataFrame equivalent to
+    ``pd.read_csv(..., na_values='')``. polars ``read_csv`` is ~2x faster than pandas.
+
+    Raises to signal the caller to fall back to pandas. We deliberately fall back for files
+    whose header polars names differently from pandas (blank headers -> pandas 'Unnamed: N';
+    duplicate headers -> pandas 'x.1' vs polars 'x_duplicated_0'), detected by comparing against
+    a cheap pandas header read, so downstream index level names stay identical. Any other polars
+    error (locked file, exotic type) also falls back. ``infer_schema_length=10000`` scans enough
+    rows to type mixed columns (e.g. ints + 'not applicable') that crash the default 100-row
+    inference. See tools/POLARS_WRITTEN_SYSTEM_FINDINGS.md in the RIO repo.
+    """
+    if fn.endswith('.gz'):
+        with gzip.open(fn, 'rb') as f:
+            src = f.read()
+        pd_cols = pd.read_csv(io.BytesIO(src), nrows=0).columns
+    else:
+        src = fn
+        pd_cols = pd.read_csv(fn, nrows=0).columns
+    pldf = pl.read_csv(src, infer_schema_length=10000)
+    # Defer to pandas whenever the two engines would name columns differently (blank/duplicate
+    # headers); downstream strips column names, so compare stripped.
+    if [c.strip() for c in pldf.columns] != [str(c).strip() for c in pd_cols]:
+        raise ValueError("header columns differ from pandas; deferring to pandas")
+    return pldf.to_pandas()
 
 # This string is inserted into sensitivity columns when value == None,
 # to allow sensitivity to be used in dataframe indices.
@@ -119,12 +149,24 @@ class CsvTable(object):
             wait = 1
             while True:
                 try:
-                    if fn.endswith('.gz'):
-                        with openFunc(fn, 'r', encoding=None) as f:
-                            dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
-                    else:
-                        with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
-                            dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
+                    # Fast path: output tables (the written-system w_*.csv read path) have no
+                    # converters/key_col/sensitivity handling, so parse with polars (~2x faster)
+                    # and hand back a pandas DataFrame. Falls back to the pandas read below for
+                    # blank/duplicate-header files or any polars error, keeping behavior identical.
+                    parsed = None
+                    if self.output_table:
+                        try:
+                            parsed = _read_output_csv_polars(fn)
+                        except Exception as e:
+                            logging.debug("polars read fallback for %s: %s", fn, e)
+                    if parsed is None:
+                        if fn.endswith('.gz'):
+                            with openFunc(fn, 'r', encoding=None) as f:
+                                parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
+                        else:
+                            with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
+                                parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
+                    dfs.append(parsed)
                     break
                 except (OSError, pd.errors.EmptyDataError) as e:
                     if wait<=7200:
