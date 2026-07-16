@@ -5,6 +5,7 @@ import numpy as np
 import pdb
 import re
 import time
+import zstandard as zstd
 
 from .error import *
 from .utils import filter_query
@@ -113,17 +114,19 @@ class CsvTable(object):
 
         dfs = []
         for fn in filename:
-            if not (fn.endswith('.gz') or fn.endswith('.csv')):
+            if not (fn.endswith('.gz') or fn.endswith('.zst') or fn.endswith('.csv')):
                 continue
-            openFunc = gzip.open if fn.endswith('.gz') else open
             wait = 1
             while True:
                 try:
                     if fn.endswith('.gz'):
-                        with openFunc(fn, 'r', encoding=None) as f:
+                        with gzip.open(fn, 'r', encoding=None) as f:
+                            dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
+                    elif fn.endswith('.zst'):
+                        with zstd.open(fn, 'rt', encoding='utf-8', errors='replace') as f:
                             dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
                     else:
-                        with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
+                        with open(fn, 'r', encoding='utf-8', errors='replace') as f:
                             dfs.append(pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False))
                     break
                 except (OSError, pd.errors.EmptyDataError) as e:

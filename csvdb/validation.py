@@ -6,13 +6,22 @@ import os
 import pandas as pd
 import re
 import pdb
+import zstandard as zstd
 
-from .database import SHAPE_DIR, CSV_PATTERN, ZIP_PATTERN
+from .database import SHAPE_DIR, CSV_PATTERN
 from .error import ValidationUsageError
 
 Tables_to_skip = ['GEOGRAPHIES_SPATIAL_JOIN']
 
 DefaultSchemaFile = 'schema.csv'
+
+def open_csv_text(path):
+    """Open a possibly-compressed (.gz/.zst) csv file for reading text."""
+    if path.endswith('.zst'):
+        return zstd.open(path, 'rt')
+    if path.endswith('.gz'):
+        return gzip.open(path, 'rt')
+    return open(path, 'r')
 
 def mkdirs(newdir, mode=0o770):
     """
@@ -91,7 +100,6 @@ def create_schema_file(dbdir, schema_file):
             csvFile = csvFileList[0].replace('\\', '/')
 
             if not tblname in Tables_to_skip:
-                openFunc = gzip.open if re.match(ZIP_PATTERN, csvFile) else open
                 abspath = os.path.join(dbdir, csvFile)
 
                 if r'.csvd/' in abspath:
@@ -104,10 +112,8 @@ def create_schema_file(dbdir, schema_file):
                     csvFile = base_path + '/' + csvd_name + '.csv'
 
 
-                with openFunc(abspath, 'r') as csv:    # N.B. binary mode doesn't translate line endings
+                with open_csv_text(abspath) as csv:
                     header = csv.readline().strip()
-                    if isinstance(header, bytes):
-                        header = header.decode()
                     schema.write(csvFile + ',')         # insert CSV basename in first column
                     schema.write(header + '\n')         # ensure consistent line endings
 
@@ -140,11 +146,8 @@ def update_from_schema(dbdir, schema_file, run):
         for csvFile in file_map[tbl_name]:
             csvpath = os.path.join(dbdir, csvFile).replace('\\', '/')
 
-            openFunc = gzip.open if re.match(ZIP_PATTERN, csvpath) else open
-            with openFunc(csvpath, 'r') as csv:
+            with open_csv_text(csvpath) as csv:
                 header = csv.readline().strip()
-                if isinstance(header, bytes):
-                    header = header.decode()
 
             target_cols = header.split(',')
 

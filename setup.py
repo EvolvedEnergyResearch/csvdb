@@ -28,6 +28,7 @@ setup(
     install_requires=[
         "pandas",
         "polars",
+        "zstandard",
     ],
     url='https://github.com/EvolvedEnergyResearch/csvdb',
     download_url='https://github.com/EvolvedEnergyResearch/csvdb.git',

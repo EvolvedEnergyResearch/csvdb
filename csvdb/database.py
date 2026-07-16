@@ -7,7 +7,7 @@
 #
 # This module and table.py provide 3 classes for interacting with the CSV data: CsvDatabase,
 # CsvTable, and CsvMetadata. CsvDatabase takes a pathname to a directory with a ".csvdb"
-# extension, and loads all the .csv and .csv.gz files found there.
+# extension, and loads all the .csv, .csv.gz, and .csv.zst files found there.
 #
 # CsvDatabase.__init__ optionally loads all CSV data files into CsvTable instances.
 #
@@ -21,9 +21,11 @@ from glob import glob
 from collections import OrderedDict
 import csv
 import gzip
+import numpy as np
 import os
 import pandas as pd
 import re
+import zstandard as zstd
 from .error import CsvdbException, ValidationFormatError
 from .table import CsvTable, REF_SENSITIVITY, SENSITIVITY_COL
 import pdb
@@ -31,14 +33,14 @@ import polars as pl
 
 pd.set_option('display.width', 200)
 
-# case-insensitive match of *.csv and *.csv.gz files
-CSV_PATTERN = re.compile(r'.*\.csv(\.gz)?$', re.IGNORECASE)
+# case-insensitive match of *.csv, *.csv.gz, and *.csv.zst files
+CSV_PATTERN = re.compile(r'.*\.csv(\.gz|\.zst)?$', re.IGNORECASE)
 CSV_DIR_PATTERN = '.csvd'
 
 SPACES_PATTERN = re.compile(r'\s\s+')
 
-# case-insensitive match of *.gz files
-ZIP_PATTERN = re.compile(r'.*\.gz$', re.IGNORECASE)
+# case-insensitive match of compressed (*.gz / *.zst) files
+ZIP_PATTERN = re.compile(r'.*\.(gz|zst)$', re.IGNORECASE)
 
 def getResource(pkg_name, rel_path):
     """
@@ -193,9 +195,10 @@ class ShapeDataMgr(object):
                 continue
 
             shape_files_zip = glob(os.path.join(base_folder, '*.csv.gz'))
+            shape_files_zst = glob(os.path.join(base_folder, '*.csv.zst'))
             shape_files_csv = glob(os.path.join(base_folder, '*.csv'))
 
-            for filename in shape_files_zip + shape_files_csv:
+            for filename in shape_files_zip + shape_files_zst + shape_files_csv:
                 basename = os.path.basename(filename)
                 shape_name = basename.split('.csv')[0]
                 file_map[shape_name] = filename
@@ -204,15 +207,18 @@ class ShapeDataMgr(object):
             shape_csv_dirs = glob(os.path.join(base_folder, '*.csvd'))
 
             for shape_csv_dir in shape_csv_dirs:
+                shape_files_zst = glob(os.path.join(base_folder, shape_csv_dir, '*.csv.zst'))
                 shape_files_zip = glob(os.path.join(base_folder, shape_csv_dir, '*.csv.gz'))
                 shape_files_csv = glob(os.path.join(base_folder, shape_csv_dir, '*.csv'))
-                # avoid duplicates for csv and zip files
-                zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
+                # avoid duplicates across compressed and plain files (prefer .zst, then .gz)
+                zst_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zst]
+                shape_files_zip = [fp for fp in shape_files_zip if os.path.split(fp)[1].split('.')[0] not in zst_file_names]
+                zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zst + shape_files_zip]
                 shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
                 basename = os.path.basename(shape_csv_dir)
                 shape_name = basename.split('.csv')[0]
-                if len(shape_files_zip + shape_files_csv):
-                    file_map[shape_name] = shape_files_zip + shape_files_csv
+                if len(shape_files_zst + shape_files_zip + shape_files_csv):
+                    file_map[shape_name] = shape_files_zst + shape_files_zip + shape_files_csv
 
         return file_map
 
@@ -428,9 +434,23 @@ class CsvDatabase(object):
         return self.file_map.get(tbl_name) or self.shapes.file_map.get(tbl_name)
 
     @staticmethod
-    def check_value_list(series, values):
-        import types
+    def comparable_value(value):
+        """
+        Normalize a value for validation comparison. All-numeric CSV files load
+        numeric labels (e.g. FIPS county codes) as int/float while mixed columns
+        like GEOGRAPHIES.gau hold the same labels as strings, so numbers are
+        compared by their string form (4003 and 4003.0 both -> '4003').
+        """
+        if value is None or isinstance(value, (bool, np.bool_)):
+            return value
+        if isinstance(value, (float, np.floating)) and float(value).is_integer():
+            return str(int(value))
+        if isinstance(value, (int, np.integer, float, np.floating)):
+            return str(value)
+        return value
 
+    @staticmethod
+    def check_value_list(series, values):
         bad = []
 
         if len(series) == 0:
@@ -439,12 +459,39 @@ class CsvDatabase(object):
         # this doesn't work when it's lower case, we actually want to match case, whatever that case may be
         # values = [val.lower() if val and isinstance(val, str) else val for val in values]
 
+        comparable = CsvDatabase.comparable_value
+        valid = {comparable(val) for val in values}
+
         for val in series.unique():
-            test_value = val if val and isinstance(val, str) else val
-            if test_value not in values:
-                bad += [(i, val) for i in series[series == test_value].index]
+            if comparable(val) not in valid:
+                bad += [(i, val) for i in series[series == val].index]
 
         return bad
+
+    @staticmethod
+    def _validation_info(val_dict, tbl_name, col_name):
+        # Prefer the more specific (table, column) over generic column spec
+        return val_dict.get((tbl_name, col_name)) or val_dict.get(('', col_name))
+
+    @staticmethod
+    def find_bad_values(col_series, val_info):
+        """
+        The shared validation core: check one column's values against a
+        ValidationInfo rule. Returns a list of (row_label, value) pairs that
+        violate the rule (empty if none). Both clean_table (formatted messages,
+        optional fixes) and validate_table (structured records) run this.
+        """
+        # If there are implicit or explicit values, check against them
+        if val_info.values:
+            bad = CsvDatabase.check_value_list(col_series, val_info.values) or []
+            # unless the column is declared not_null, empty cells are legal
+            if bad and not val_info.not_null:
+                bad = [(i, value) for i, value in bad if value is not None]
+            return bad
+        # Otherwise, if there's a type-checking function, call that
+        if val_info.type_func:
+            return val_info.type_func(col_series, not val_info.not_null)
+        return []
 
 
     def list_tables(self, skip_dir):
@@ -496,8 +543,13 @@ class CsvDatabase(object):
                 pdb.set_trace()
 
         for filepath in pathname:
-            openFunc = gzip.open if filepath.endswith('.gz') else open
-            with openFunc(filepath, 'r', encoding=None if filepath.endswith('.gz') else 'utf-8') as f:
+            if filepath.endswith('.zst'):
+                f = zstd.open(filepath, 'rt', encoding='utf-8')
+            elif filepath.endswith('.gz'):
+                f = gzip.open(filepath, 'r', encoding=None)
+            else:
+                f = open(filepath, 'r', encoding='utf-8')
+            with f:
                 df = pd.read_csv(f, na_values='', low_memory=False, na_filter=False)
             # filter data by matching against df using the key_cols
             df_filter = df[key_cols].astype(str).sum(axis=1)
@@ -589,24 +641,15 @@ class CsvDatabase(object):
                         print("Table {} has empty column '{}'".format(tbl_name, col_name))
                         empty_cols.append(col_name)
 
-            # Prefer the more specific (table, column) over generic column spec
-            val_info = val_dict.get((tbl_name, col_name)) or val_dict.get(('', col_name))
+            val_info = self._validation_info(val_dict, tbl_name, col_name)
 
             if val_info:
                 values = val_info.values
                 type_func = val_info.type_func
                 ref_tbl = val_info.ref_tbl
                 ref_col = val_info.ref_col
-                ref_tbl2 = val_info.ref_tbl2
-                ref_col2 = val_info.ref_col2
-                bad = []
 
-                # If there are implicit or explicit values, check against them
-                if values:
-                    bad = self.check_value_list(col_series, values)
-                # Otherwise, if there's a type-checking function, call that
-                elif type_func:
-                    bad = type_func(col_series, not val_info.not_null)
+                bad = self.find_bad_values(col_series, val_info)
 
                 if bad:
                     if values and len(values) > 5:
@@ -624,12 +667,11 @@ class CsvDatabase(object):
                             reported_bad_values.add(value)
 
                         if ref_tbl and ref_col:   # values come from referenced column
-                            if ref_tbl2 and ref_col2:
-                                msgs.append("    Value '{}' at line {} not found in reference column {}.{} or {}.{}".format(
-                                    value, i + 2, ref_tbl, ref_col, ref_tbl2, ref_col2))  # +1 for header; +1 to translate 0 offset
-                            else:
-                                msgs.append("    Value '{}' at line {} not found in reference column {}.{}".format(
-                                    value, i + 2, ref_tbl, ref_col))  # +1 for header; +1 to translate 0 offset
+                            refs = ' or '.join('{}.{}'.format(rt, rc) for rt, rc in
+                                               [(ref_tbl, ref_col), (val_info.ref_tbl2, val_info.ref_col2),
+                                                (val_info.ref_tbl3, val_info.ref_col3)] if rt and rc)
+                            msgs.append("    Value '{}' at line {} not found in reference column {}".format(
+                                value, i + 2, refs))  # +1 for header; +1 to translate 0 offset
 
                         elif values:              # values are enumerated in validation.csv
                             msgs.append("    Value '{}' at line {} not found in validation list {}".format(
@@ -686,6 +728,36 @@ class CsvDatabase(object):
             msgs = ['__________________________________________________________'] + msgs
 
         return (fixable, msgs)
+
+    def validate_table(self, tbl_name, val_dict, data=None):
+        """
+        Structured, non-mutating counterpart to clean_table's validation checks.
+        Runs the same per-column rules (via find_bad_values) but returns records
+        instead of formatted messages, and never modifies data or files.
+
+        :return: (list of dict) one record per column with violations:
+            {'column': str, 'kind': 'referential'|'enum'|'dtype', 'refs': str or None,
+             'rule': str, 'bad': [(row_label, value), ...]}
+            row_label is the position in the raw concatenation of the table's
+            file(s) as loaded by CsvTable (labels are assigned before any
+            null-key rows are dropped, so they map back to file lines).
+        """
+        df = self.get_table(tbl_name).data if data is None else data
+
+        results = []
+        if df is None or len(df) == 0:
+            return results
+
+        for col_name in df:
+            val_info = self._validation_info(val_dict, tbl_name, col_name)
+            if val_info is None:
+                continue
+            bad = self.find_bad_values(df[col_name], val_info)
+            if bad:
+                results.append({'column': col_name, 'kind': val_info.check_kind(),
+                                'refs': val_info.refs_str(), 'rule': val_info.rule_text(),
+                                'bad': bad})
+        return results
 
     def clean_tables(self, val_dict, skip_tables=None, skip_dir=None, check_unique=True,
                      trim_blanks=True, drop_empty_rows=True, drop_empty_cols=True,
@@ -825,8 +897,11 @@ class CsvDatabase(object):
             raise CsvdbException("read_validation_csv: a package name was not provided as an argument or in the CsvDatabase instance")
 
         extra_inputs = 'additional_valid_inputs'
+        # referenced_table3/referenced_field3 are optional for backwards compatibility
+        optional_cols = {'referenced_table3', 'referenced_field3'}
         col_names = ['table_name', 'column_name', 'not_null', 'linked_column', 'dtype', 'folder',
-                     'referenced_table', 'referenced_field', 'referenced_table2', 'referenced_field2', 'cascade_delete', extra_inputs]
+                     'referenced_table', 'referenced_field', 'referenced_table2', 'referenced_field2',
+                     'referenced_table3', 'referenced_field3', 'cascade_delete', extra_inputs]
         col_set = set(col_names)
 
         f = resourceStream(pkg_name, 'etc/validation.csv')
@@ -841,25 +916,29 @@ class CsvDatabase(object):
             if name_set - col_set:
                 raise ValidationFormatError('Unknown validation columns: {}'.format(name_set - col_set))
 
-            if col_set - name_set:
-                raise ValidationFormatError('Missing validation columns: {}'.format(col_set - name_set))
+            if col_set - name_set - optional_cols:
+                raise ValidationFormatError('Missing validation columns: {}'.format(col_set - name_set - optional_cols))
 
         # Store data keyed by tuple of (table, column), where table may be '' in some cases
         val_dict = OrderedDict()
 
         for row in rows[1:]:    # skip column names
-            (table_name, column_name, not_null, linked_column, dtype, folder,
-             referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra) = row[:count]
+            vals = dict(zip(names, row[:count]))
+            extra = vals.get(extra_inputs, '')
 
             # convert "additional inputs" col into a list of strings of all non-empty values
             # from trailing, unnamed or generic (_c_NN) columns. If initial value is '', convert
             # to an empty list so value is always a list.
             extra_values = ([extra] + [value for value in row[count:] if value != '']) if extra else []
 
-            obj = ValidationInfo(self, table_name, column_name, not_null, linked_column, dtype, folder,
-                                 referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra_values)
+            obj = ValidationInfo(self, vals['table_name'], vals['column_name'], vals['not_null'],
+                                 vals['linked_column'], vals['dtype'], vals['folder'],
+                                 vals['referenced_table'], vals['referenced_field'],
+                                 vals['referenced_table2'], vals['referenced_field2'],
+                                 vals.get('referenced_table3', ''), vals.get('referenced_field3', ''),
+                                 vals['cascade_delete'], extra_values)
 
-            key = (table_name, column_name)
+            key = (vals['table_name'], vals['column_name'])
             val_dict[key] = obj
 
         if use_cache:
