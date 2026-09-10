@@ -97,7 +97,8 @@ def _extract_name(path):
 # checking and conversion. Also collects values from a referenced folder or table.col.
 class ValidationInfo(object):
     def __init__(self, db, table_name, column_name, not_null, linked_column,
-                 dtype, folder, ref_tbl, ref_col, ref_tbl2, ref_col2, cascade_delete, extra_values):
+                 dtype, folder, ref_tbl, ref_col, ref_tbl2, ref_col2, ref_tbl3, ref_col3,
+                 cascade_delete, extra_values):
         self.table_name = table_name
         self.column_name = column_name
         self.not_null = str_to_bool(not_null)
@@ -109,6 +110,8 @@ class ValidationInfo(object):
         self.ref_col = ref_col
         self.ref_tbl2 = ref_tbl2
         self.ref_col2 = ref_col2
+        self.ref_tbl3 = ref_tbl3
+        self.ref_col3 = ref_col3
         self.cascade_delete = str_to_bool(cascade_delete)
 
         self.values = []    # all legal values given
@@ -119,26 +122,20 @@ class ValidationInfo(object):
             self.values = list(map(_extract_name, paths))
 
         elif ref_tbl and ref_col:
-            try:
-                tbl = db.get_table(ref_tbl)
-            except CsvdbException:
-                raise ValidationFormatError("unknown table '{}'".format(ref_tbl))
+            self.values = []
+            for tbl_name, col_name in [(ref_tbl, ref_col), (ref_tbl2, ref_col2), (ref_tbl3, ref_col3)]:
+                if not (tbl_name and col_name):
+                    continue
 
-            if ref_col not in tbl.data.columns:
-                raise ValidationFormatError("unknown column '{}' in table '{}'".format(ref_col, ref_tbl))
-
-            if ref_tbl2 and ref_col2:
                 try:
-                    tbl2 = db.get_table(ref_tbl2)
+                    tbl = db.get_table(tbl_name)
                 except CsvdbException:
-                    raise ValidationFormatError("unknown table '{}'".format(ref_tbl2))
+                    raise ValidationFormatError("unknown table '{}'".format(tbl_name))
 
-                if ref_col2 not in tbl2.data.columns:
-                    raise ValidationFormatError("unknown column '{}' in table '{}'".format(ref_col2, ref_tbl2))
+                if col_name not in tbl.data.columns:
+                    raise ValidationFormatError("unknown column '{}' in table '{}'".format(col_name, tbl_name))
 
-                self.values = list(tbl.data[ref_col].unique()) + list(tbl2.data[ref_col2].unique())
-            else:
-                self.values = list(tbl.data[ref_col].unique())
+                self.values += list(tbl.data[col_name].unique())
 
             # TODO: handle this in metadata?
             if ref_col == 'shape':

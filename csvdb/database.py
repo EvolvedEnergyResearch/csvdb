@@ -7,7 +7,7 @@
 #
 # This module and table.py provide 3 classes for interacting with the CSV data: CsvDatabase,
 # CsvTable, and CsvMetadata. CsvDatabase takes a pathname to a directory with a ".csvdb"
-# extension, and loads all the .csv and .csv.gz files found there.
+# extension, and loads all the .csv, .csv.gz, and .csv.zst files found there.
 #
 # CsvDatabase.__init__ optionally loads all CSV data files into CsvTable instances.
 #
@@ -31,14 +31,14 @@ import polars as pl
 
 pd.set_option('display.width', 200)
 
-# case-insensitive match of *.csv and *.csv.gz files
-CSV_PATTERN = re.compile(r'.*\.csv(\.gz)?$', re.IGNORECASE)
+# case-insensitive match of *.csv, *.csv.gz, and *.csv.zst files
+CSV_PATTERN = re.compile(r'.*\.csv(\.gz|\.zst)?$', re.IGNORECASE)
 CSV_DIR_PATTERN = '.csvd'
 
 SPACES_PATTERN = re.compile(r'\s\s+')
 
-# case-insensitive match of *.gz files
-ZIP_PATTERN = re.compile(r'.*\.gz$', re.IGNORECASE)
+# case-insensitive match of compressed (*.gz / *.zst) files
+ZIP_PATTERN = re.compile(r'.*\.(gz|zst)$', re.IGNORECASE)
 
 def getResource(pkg_name, rel_path):
     """
@@ -192,29 +192,33 @@ class ShapeDataMgr(object):
             if base_folder is None:
                 continue
 
-            shape_files_zip = glob(os.path.join(base_folder, '*.csv.gz'))
-            shape_files_csv = glob(os.path.join(base_folder, '*.csv'))
-
-            for filename in shape_files_zip + shape_files_csv:
-                basename = os.path.basename(filename)
-                shape_name = basename.split('.csv')[0]
+            for shape_name, filename in cls.shape_files_by_name(base_folder).items():
                 file_map[shape_name] = filename
 
             # csv directory files get appended together when they are read in
             shape_csv_dirs = glob(os.path.join(base_folder, '*.csvd'))
 
             for shape_csv_dir in shape_csv_dirs:
-                shape_files_zip = glob(os.path.join(base_folder, shape_csv_dir, '*.csv.gz'))
-                shape_files_csv = glob(os.path.join(base_folder, shape_csv_dir, '*.csv'))
-                # avoid duplicates for csv and zip files
-                zip_file_names = [os.path.split(fp)[1].split('.')[0] for fp in shape_files_zip]
-                shape_files_csv = [fp for fp in shape_files_csv if os.path.split(fp)[1].split('.')[0] not in zip_file_names]
+                shape_files = sorted(cls.shape_files_by_name(shape_csv_dir).values())
                 basename = os.path.basename(shape_csv_dir)
                 shape_name = basename.split('.csv')[0]
-                if len(shape_files_zip + shape_files_csv):
-                    file_map[shape_name] = shape_files_zip + shape_files_csv
+                if len(shape_files):
+                    file_map[shape_name] = shape_files
 
         return file_map
+
+    # a shape slice can be stored uncompressed or gzipped or zstd compressed; when more than one
+    # exists for the same name, the most compressed (i.e. most recently written) one wins
+    SHAPE_EXTENSIONS = ('.csv.zst', '.csv.gz', '.csv')
+
+    @classmethod
+    def shape_files_by_name(cls, base_folder):
+        """Map shape slice name -> single file path, ignoring superseded compressions"""
+        by_name = {}
+        for ext in cls.SHAPE_EXTENSIONS:
+            for filename in glob(os.path.join(base_folder, '*' + ext)):
+                by_name.setdefault(os.path.basename(filename)[:-len(ext)], filename)
+        return by_name
 
     def get_slice(self, name, verbose=True, load_all=True, years=None):
         if not self.slices and load_all:
@@ -496,15 +500,81 @@ class CsvDatabase(object):
                 pdb.set_trace()
 
         for filepath in pathname:
-            openFunc = gzip.open if filepath.endswith('.gz') else open
-            with openFunc(filepath, 'r', encoding=None if filepath.endswith('.gz') else 'utf-8') as f:
-                df = pd.read_csv(f, na_values='', low_memory=False, na_filter=False)
+            # pandas infers .gz/.zst compression from the extension
+            df = pd.read_csv(filepath, na_values='', low_memory=False, na_filter=False)
             # filter data by matching against df using the key_cols
             df_filter = df[key_cols].astype(str).sum(axis=1)
             new_data = data[(data[key_cols].astype(str).sum(axis=1).isin(df_filter))].copy()
             if len(new_data) == len(data):
                 print('Possible error when filtering for csvd file {}'.format(filepath))
             new_data.to_csv(filepath, index=False, compression='infer')
+
+    def validate_table(self, tbl_name, val_dict, data=None):
+        """
+        Run the per-column validation checks of clean_table over one table, without
+        modifying anything: no trimming, no dropping of empty rows/columns, no orphan
+        deletion, no writing. Intended for tools that report problems to a user.
+
+        :param tbl_name: (str) the name of the table to check
+        :param val_dict: (Dict) validation dictionary loaded from validation.csv
+        :param data: (pandas.DataFrame) data to check instead of the table's own
+        :return: (list of dict) one record per failing column, with keys:
+            'column' (str), 'kind' (one of 'reference', 'values', 'dtype'),
+            'refs' (list of 'table.column' strings the values must come from),
+            'rule' (str) a human-readable description of what was checked, and
+            'bad' (list of (row_label, value)) the offending rows.
+        """
+        tbl = self.get_table(tbl_name)
+        df = tbl.data if data is None else data
+
+        records = []
+
+        if df is None or len(df) == 0:
+            return records
+
+        for col_name in df:
+            # Prefer the more specific (table, column) over generic column spec
+            val_info = val_dict.get((tbl_name, col_name)) or val_dict.get(('', col_name))
+            if not val_info:
+                continue
+
+            values = val_info.values
+            type_func = val_info.type_func
+
+            # If there are implicit or explicit values, check against them
+            if values:
+                bad = self.check_value_list(df[col_name], values)
+            # Otherwise, if there's a type-checking function, call that
+            elif type_func:
+                bad = type_func(df[col_name], not val_info.not_null)
+            else:
+                continue
+
+            if not bad:
+                continue
+
+            refs = ['{}.{}'.format(ref_tbl, ref_col)
+                    for ref_tbl, ref_col in [(val_info.ref_tbl, val_info.ref_col),
+                                             (val_info.ref_tbl2, val_info.ref_col2),
+                                             (val_info.ref_tbl3, val_info.ref_col3)]
+                    if ref_tbl and ref_col]
+
+            if refs:
+                kind = 'reference'
+                rule = 'values must appear in ' + ' or '.join(refs)
+            elif values:
+                kind = 'values'
+                shown = values if len(values) <= 5 else values[:2] + ['...'] + values[-2:]
+                rule = 'values must be one of {}'.format(shown)
+            else:
+                kind = 'dtype'
+                rule = 'values must pass data type check {}{}'.format(
+                    type_func.__name__, '' if val_info.not_null else ' (or be empty)')
+
+            records.append({'column': col_name, 'kind': kind, 'refs': refs,
+                            'rule': rule, 'bad': list(bad)})
+
+        return records
 
     def clean_table(self, tbl_name, val_dict, counts,
                     data=None,
@@ -829,6 +899,9 @@ class CsvDatabase(object):
                      'referenced_table', 'referenced_field', 'referenced_table2', 'referenced_field2', 'cascade_delete', extra_inputs]
         col_set = set(col_names)
 
+        # optional columns: packages may omit these entirely
+        optional_col_set = {'referenced_table3', 'referenced_field3'}
+
         f = resourceStream(pkg_name, 'etc/validation.csv')
         rows = [row for row in csv.reader(f)]
 
@@ -838,18 +911,26 @@ class CsvDatabase(object):
 
         name_set = set(names)
         if name_set != col_set:
-            if name_set - col_set:
-                raise ValidationFormatError('Unknown validation columns: {}'.format(name_set - col_set))
+            if name_set - col_set - optional_col_set:
+                raise ValidationFormatError('Unknown validation columns: {}'.format(name_set - col_set - optional_col_set))
 
             if col_set - name_set:
                 raise ValidationFormatError('Missing validation columns: {}'.format(col_set - name_set))
+
+        # positions are read by name so optional columns can appear in any order
+        col_pos = {name: idx for idx, name in enumerate(names)}
 
         # Store data keyed by tuple of (table, column), where table may be '' in some cases
         val_dict = OrderedDict()
 
         for row in rows[1:]:    # skip column names
+            def value(name):
+                pos = col_pos.get(name)
+                return row[pos] if pos is not None else ''
+
             (table_name, column_name, not_null, linked_column, dtype, folder,
-             referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra) = row[:count]
+             referenced_table, referenced_field, referenced_table2, referenced_field2,
+             referenced_table3, referenced_field3, cascade_delete, extra) = map(value, col_names[:10] + ['referenced_table3', 'referenced_field3'] + col_names[10:])
 
             # convert "additional inputs" col into a list of strings of all non-empty values
             # from trailing, unnamed or generic (_c_NN) columns. If initial value is '', convert
@@ -857,7 +938,8 @@ class CsvDatabase(object):
             extra_values = ([extra] + [value for value in row[count:] if value != '']) if extra else []
 
             obj = ValidationInfo(self, table_name, column_name, not_null, linked_column, dtype, folder,
-                                 referenced_table, referenced_field, referenced_table2, referenced_field2, cascade_delete, extra_values)
+                                 referenced_table, referenced_field, referenced_table2, referenced_field2,
+                                 referenced_table3, referenced_field3, cascade_delete, extra_values)
 
             key = (table_name, column_name)
             val_dict[key] = obj

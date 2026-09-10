@@ -1,6 +1,7 @@
 
 import gzip
 import io
+import zstandard as zstd
 import logging
 import pandas as pd
 import numpy as np
@@ -143,7 +144,7 @@ class CsvTable(object):
 
         dfs = []
         for fn in filename:
-            if not (fn.endswith('.gz') or fn.endswith('.csv')):
+            if not (fn.endswith('.gz') or fn.endswith('.zst') or fn.endswith('.csv')):
                 continue
             openFunc = gzip.open if fn.endswith('.gz') else open
             wait = 1
@@ -162,6 +163,9 @@ class CsvTable(object):
                     if parsed is None:
                         if fn.endswith('.gz'):
                             with openFunc(fn, 'r', encoding=None) as f:
+                                parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
+                        elif fn.endswith('.zst'):
+                            with zstd.open(fn, 'rt', encoding='utf-8', errors='replace') as f:
                                 parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
                         else:
                             with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
