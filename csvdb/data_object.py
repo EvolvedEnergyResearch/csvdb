@@ -232,7 +232,9 @@ class DataObject(object):
                 timeseries = timeseries.groupby(level=timeseries.index.names).first()
 
             # we save the same data to two variables for ease of code interchangeability
-            self._timeseries = timeseries.copy(deep=True)  # RIO uses _timeseries
+            # timeseries is already a new frame (set_index/sort_index/astype copy), so it shares
+            # no data with the table; a further deep copy only duplicates it
+            self._timeseries = timeseries  # RIO uses _timeseries
             self.raw_values = self._timeseries  # EP uses raw_values
         else:
             self._timeseries = self.raw_values = None

@@ -9,9 +9,15 @@ import polars as pl
 import pdb
 import re
 import time
+import os
+import sys
+import pickle
+import hashlib
 
 from .error import *
-from .utils import filter_query
+from .utils import filter_query, register_row_index
+
+_CACHE_FORMAT = 1
 
 
 def _read_output_csv_polars(fn):
@@ -129,6 +135,74 @@ class CsvTable(object):
         if self.data is not None:
             return self.data
 
+        cache_path = self._cache_path()
+        if cache_path and self._load_from_cache(cache_path):
+            return
+        self._load_from_files()
+        if cache_path:
+            self._write_cache(cache_path)
+
+    # --- optional on-disk cache of the loaded table --------------------------------------
+    # The cache holds the finished `self.data` and the metadata fields load_all computes, as a
+    # pickle (which round-trips every dtype and python object exactly). It is never edited: an
+    # entry's file name carries a hash of everything the load depends on -- each source file's
+    # path, size and mtime, the table's metadata before loading, the load flags, and the csvdb,
+    # pandas, numpy and python versions -- so any change selects a new name and the table is
+    # parsed again. Off unless CSVDB_TABLE_CACHE names a directory.
+    _MD_SLOTS = ('key_col', 'has_key_col', 'attr_cols', 'df_cols', 'df_value_col', 'df_filters',
+                 'drop_cols', 'lowcase_cols')
+
+    def _md_state(self):
+        md = self.metadata
+        return tuple((s, getattr(md, s, None)) for s in self._MD_SLOTS)
+
+    def _cache_path(self):
+        cache_dir = os.environ.get('CSVDB_TABLE_CACHE')
+        if not cache_dir:
+            return None
+        filename = self.db.file_for_table(self.name)
+        files = filename if type(filename) is list else [filename]
+        files = sorted(f for f in files if f and (f.endswith('.gz') or f.endswith('.zst') or f.endswith('.csv')))
+        if not files:
+            return None
+        h = hashlib.sha1()
+        try:
+            for f in files:
+                st = os.stat(f)
+                h.update(repr((os.path.normcase(os.path.abspath(f)), st.st_size, st.st_mtime_ns)).encode())
+        except OSError:
+            return None
+        h.update(repr((_CACHE_FORMAT, sys.version_info[:3], pd.__version__, np.__version__, self.name,
+                       self.output_table, self.compile_sensitivities,
+                       sorted(self.str_cols) if self.str_cols else None, list(self.filter_columns),
+                       repr(self._md_state()))).encode())
+        return os.path.join(cache_dir, '{}-{}.pkl'.format(self.name, h.hexdigest()[:20]))
+
+    def _load_from_cache(self, path):
+        try:
+            with open(path, 'rb') as f:
+                data, md_state = pickle.load(f)
+        except (OSError, EOFError, pickle.UnpicklingError, ValueError):
+            return False
+        md = self.metadata
+        for slot, value in md_state:
+            setattr(md, slot, value)
+        self.data = data
+        if data is not None and not self.output_table and not self.compile_sensitivities and md.key_col:
+            register_row_index(self.data, md.key_col)
+        return True
+
+    def _write_cache(self, path):
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp = '{}.{}.tmp'.format(path, os.getpid())
+            with open(tmp, 'wb') as f:
+                pickle.dump((self.data, self._md_state()), f, protocol=5)
+            os.replace(tmp, path)
+        except OSError as e:
+            logging.debug("csvdb: could not write table cache %s: %s", path, e)
+
+    def _load_from_files(self):
         db = self.db
         tbl_name = self.name
         filename = db.file_for_table(tbl_name)
@@ -248,6 +322,9 @@ class CsvTable(object):
         if drop_cols:
             self.data.drop(drop_cols, axis='columns', inplace=True)
 
+        if not self.output_table and not self.compile_sensitivities and md.key_col:
+            register_row_index(self.data, md.key_col)
+
         rows, cols = df.shape
         if Verbose:
             print("Cached {} rows, {} cols for table '{}' from {}".format(rows, cols, tbl_name, filename))
@@ -286,7 +363,9 @@ class CsvTable(object):
                 filters[SENSITIVITY_COL] = sens
 
         rows = filter_query(self.data, filters)
-        tups = [tuple(row) for idx, row in rows.iterrows()]
+        # same tuples iterrows() gives: it boxes each row of rows.values (object when the dtypes
+        # are mixed, else the common dtype) through a Series, whose iteration yields .item()
+        tups = [tuple(r.tolist()) for r in rows.values]
 
         count = len(tups)
         if count == 0:
