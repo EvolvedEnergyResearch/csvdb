@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+import weakref
 import pdb
 import logging
 
@@ -58,7 +59,8 @@ def get_database(pathname=None):
 
 
 class DataObject(object):
-    # dict keyed by class object; value is list of instances of the class
+    # dict keyed by class object; value is a list of weak references to instances of the class.
+    # Weak, so the registry does not keep every DataObject (and the frames it holds) alive.
     _instancesByClass = defaultdict(list)
 
     # These are here for completeness; they're shadowed in generated subclasses.
@@ -73,7 +75,10 @@ class DataObject(object):
         Append self to a list for our subclass
         """
         cls = self.__class__
-        self._instancesByClass[cls].append(self)
+        refs = self._instancesByClass[cls]
+        refs.append(weakref.ref(self))
+        if len(refs) > 1024 and len(refs) & (len(refs) - 1) == 0:
+            refs[:] = [r for r in refs if r() is not None]
         self._scenario = scenario
         self._key = key
         self._timeseries = None  # dataframe or None
@@ -97,7 +102,7 @@ class DataObject(object):
         """
         Return instances for any subclass of DataObject.
         """
-        return DataObject._instancesByClass[cls]
+        return [obj for obj in (r() for r in DataObject._instancesByClass[cls]) if obj is not None]
 
     @classmethod
     def get_instance(cls, key):
