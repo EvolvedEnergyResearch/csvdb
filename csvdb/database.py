@@ -1007,7 +1007,7 @@ class CsvDatabase(object):
                                  referenced_table, referenced_field, referenced_table2, referenced_field2,
                                  referenced_table3, referenced_field3, cascade_delete, extra_values)
 
-            key = (vals['table_name'], vals['column_name'])
+            key = (table_name, column_name)
             val_dict[key] = obj
 
         if use_cache:
