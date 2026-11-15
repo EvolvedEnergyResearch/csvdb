@@ -235,13 +235,13 @@ class CsvTable(object):
                             logging.debug("polars read fallback for %s: %s", fn, e)
                     if parsed is None:
                         if fn.endswith('.gz'):
-                            with openFunc(fn, 'r', encoding=None) as f:
+                            with gzip.open(fn, 'r', encoding=None) as f:
                                 parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
                         elif fn.endswith('.zst'):
                             with zstd.open(fn, 'rt', encoding='utf-8', errors='replace') as f:
                                 parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
                         else:
-                            with openFunc(fn, 'r', encoding='utf-8',errors='replace') as f:
+                            with open(fn, 'r', encoding='utf-8', errors='replace') as f:
                                 parsed = pd.read_csv(f, index_col=None, converters=converters, na_values='', low_memory=False)
                     dfs.append(parsed)
                     break
