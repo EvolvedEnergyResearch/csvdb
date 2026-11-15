@@ -150,5 +150,52 @@ class ValidationInfo(object):
 
             self.values += extra_values
 
+        self.extra_values = extra_values or []
+
     def __str__(self):
         return "<ValidationInfo {}.{}>".format(self.table_name, self.column_name)
+
+    def check_kind(self):
+        """
+        Which check clean_table/validate_table will run for this rule, mirroring
+        their values-before-type_func precedence: 'referential' (legal values come
+        from a referenced table.column or a folder listing), 'enum' (values
+        enumerated in validation.csv), 'dtype' (type check only), or None (no
+        actionable check).
+        """
+        if self.values:
+            if self.folder or (self.ref_tbl and self.ref_col):
+                return 'referential'
+            return 'enum'
+        if self.type_func:
+            return 'dtype'
+        return None
+
+    def refs_str(self):
+        """
+        'TBL.col or TBL2.col [or TBL3.col]' for reference rules, the folder name
+        for folder rules, else None.
+        """
+        if self.folder:
+            return '{} folder'.format(self.folder)
+        pairs = [(self.ref_tbl, self.ref_col), (self.ref_tbl2, self.ref_col2),
+                 (self.ref_tbl3, self.ref_col3)]
+        refs = ' or '.join('{}.{}'.format(rt, rc) for rt, rc in pairs if rt and rc)
+        return refs or None
+
+    def rule_text(self):
+        """Human-readable statement of the rule, for UIs and generated prompts."""
+        kind = self.check_kind()
+        if kind == 'referential':
+            rule = 'values must exist in {}'.format(self.refs_str())
+            if self.extra_values:
+                rule += ' or be one of {}'.format(self.extra_values)
+        elif kind == 'enum':
+            rule = 'value must be one of {}'.format(self.values)
+        elif kind == 'dtype':
+            rule = 'values must parse as {}'.format(self.dtype)
+        else:
+            return 'no check defined'
+        if not self.not_null:
+            rule += ' (blank allowed)'
+        return rule

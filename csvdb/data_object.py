@@ -83,6 +83,7 @@ class DataObject(object):
         self._key = key
         self._timeseries = None  # dataframe or None
         self.raw_values = None
+        self.loaded = None  # what load_timeseries read: {'table', 'key', 'sensitivity', 'dropped'}
 
     def __str__(self):
         cls_name = self.__class__.__name__
@@ -172,6 +173,12 @@ class DataObject(object):
                 raise CsvdbException(msg)
             # sens_filter = sens or REF_SENSITIVITY
             matches = matches[matches[SENSITIVITY_COL] == sens]
+
+        # where this object's data came from: the sensitivity chosen and, for the rows loaded, the
+        # columns the metadata drops (their documentation, such as source and notes), so a caller
+        # can trace the data to the database (RIO's input release publishes the source text)
+        self.loaded = {'table': tbl_name, 'key': key, 'sensitivity': sens if has_sensitivity_col else None,
+                       'dropped': matches[[c for c in md.drop_cols if c in matches.columns]].drop_duplicates()}
 
         if len(matches) == 0:
             logging.debug("Warning: table '{}': no rows found with the following pattern: '{}'".format(tbl_name, filters))

@@ -220,7 +220,6 @@ class CsvTable(object):
         for fn in filename:
             if not (fn.endswith('.gz') or fn.endswith('.zst') or fn.endswith('.csv')):
                 continue
-            openFunc = gzip.open if fn.endswith('.gz') else open
             wait = 1
             while True:
                 try:
