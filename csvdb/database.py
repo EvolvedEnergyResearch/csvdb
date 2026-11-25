@@ -37,6 +37,10 @@ pd.set_option('display.width', 200)
 CSV_PATTERN = re.compile(r'.*\.csv(\.gz|\.zst)?$', re.IGNORECASE)
 CSV_DIR_PATTERN = '.csvd'
 
+# A table stored as Parquet. Only output-table databases (RIO's written system) map these;
+# an input database keeps reading CSV only.
+PARQUET_PATTERN = re.compile(r'.*\.parquet$', re.IGNORECASE)
+
 SPACES_PATTERN = re.compile(r'\s\s+')
 
 # case-insensitive match of compressed (*.gz / *.zst) files
@@ -382,6 +386,9 @@ class CsvDatabase(object):
 
         # Otherwise, return the column headers from the file
         pathname = self.file_for_table(table)
+        if str(pathname).endswith('.parquet'):
+            from .table import parquet_column_order
+            return parquet_column_order(pathname) or list(pl.read_parquet_schema(pathname))
         with open(pathname, 'r') as f:
             headers = f.readline().strip()
         result = headers.split(',')
@@ -425,8 +432,13 @@ class CsvDatabase(object):
             else:
                 for filename in filenames:
                     basename = os.path.basename(filename)
-                    if re.match(CSV_PATTERN, basename):
+                    is_parquet = self.output_tables and re.match(PARQUET_PATTERN, basename)
+                    if is_parquet or re.match(CSV_PATTERN, basename):
                         tbl_name = basename.split('.')[0]
+                        # Parquet wins over a CSV of the same table (RIO removes the other format
+                        # when it writes one, so both only exist when copied in by hand).
+                        if not is_parquet and str(self.file_map.get(tbl_name, '')).endswith('.parquet'):
+                            continue
                         self.file_map[tbl_name] = os.path.abspath(os.path.join(dirpath, filename))
 
 

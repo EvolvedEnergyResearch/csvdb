@@ -13,6 +13,7 @@ import os
 import sys
 import pickle
 import hashlib
+import json
 
 from .error import *
 from .utils import filter_query, register_row_index
@@ -44,6 +45,35 @@ def _read_output_csv_polars(fn):
     # headers); downstream strips column names, so compare stripped.
     if [c.strip() for c in pldf.columns] != [str(c).strip() for c in pd_cols]:
         raise ValueError("header columns differ from pandas; deferring to pandas")
+    return pldf.to_pandas()
+
+# Parquet metadata key holding a table's column order as a JSON list (RIO's writer sets it).
+# A table's index is its non-value columns in column order, and RIO reads the index levels by
+# position, so the order recorded at write time is restored on read.
+COLUMN_ORDER_KEY = 'csvdb.column_order'
+
+def parquet_column_order(fn):
+    """The column order recorded in a Parquet file's metadata, or None if none was recorded."""
+    order = pl.read_parquet_metadata(fn).get(COLUMN_ORDER_KEY)
+    return None if order is None else json.loads(order)
+
+def _read_parquet(fn):
+    """A Parquet table as pandas, categorical columns as object strings to match the CSV path.
+    RIO writes these with the types its CSV round trip gives, so the frame matches what
+    ``_read_output_csv_polars`` returns for the same table written as CSV. Columns come back in
+    the order recorded in the file's metadata. A file without one (rewritten by a tool that
+    drops Parquet metadata, such as pandas or polars) keeps its own order, with a warning."""
+    pldf = pl.read_parquet(fn)
+    order = parquet_column_order(fn)
+    if order is None:
+        logging.warning("%s has no recorded column order, so its index levels follow the file's "
+                        "column order. Rewrite it with RIO, or keep its Parquet metadata.", fn)
+    elif sorted(order) != sorted(pldf.columns):
+        raise ValueError(f"{fn}: columns {pldf.columns} do not match the recorded order {order}")
+    else:
+        pldf = pldf.select(order)
+    pldf = pldf.with_columns(pl.col(c).cast(pl.String) for c, dtype in pldf.schema.items()
+                             if dtype in (pl.Categorical, pl.Enum))
     return pldf.to_pandas()
 
 # This string is inserted into sensitivity columns when value == None,
@@ -162,7 +192,7 @@ class CsvTable(object):
             return None
         filename = self.db.file_for_table(self.name)
         files = filename if type(filename) is list else [filename]
-        files = sorted(f for f in files if f and (f.endswith('.gz') or f.endswith('.zst') or f.endswith('.csv')))
+        files = sorted(f for f in files if f and f.endswith(('.gz', '.zst', '.csv', '.parquet')))
         if not files:
             return None
         h = hashlib.sha1()
@@ -218,7 +248,7 @@ class CsvTable(object):
 
         dfs = []
         for fn in filename:
-            if not (fn.endswith('.gz') or fn.endswith('.zst') or fn.endswith('.csv')):
+            if not fn.endswith(('.gz', '.zst', '.csv', '.parquet')):
                 continue
             wait = 1
             while True:
@@ -228,7 +258,9 @@ class CsvTable(object):
                     # and hand back a pandas DataFrame. Falls back to the pandas read below for
                     # blank/duplicate-header files or any polars error, keeping behavior identical.
                     parsed = None
-                    if self.output_table:
+                    if fn.endswith('.parquet'):
+                        parsed = _read_parquet(fn)
+                    elif self.output_table:
                         try:
                             parsed = _read_output_csv_polars(fn)
                         except Exception as e:
